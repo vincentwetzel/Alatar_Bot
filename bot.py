@@ -277,5 +277,5 @@ async def invite_member_to_voice_channel(members_in_same_game, channel: discord.
 
 token = ""
 with open('token.txt', 'r') as f:
-    token= f.readline()
+    token = f.readline().rstrip('\n') # readline() usually has a \n at the end of it
 bot.run(token)
