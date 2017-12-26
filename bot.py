@@ -276,6 +276,6 @@ async def invite_member_to_voice_channel(members_in_same_game, channel: discord.
             await log_msg_to_Discord_pm(str(member.name) + " was MOVED to " + str(channel.name))
 
 token = ""
-with open('myfile.txt', 'r') as f:
+with open('token.txt', 'r') as f:
     token= f.readline()
 bot.run(token)
