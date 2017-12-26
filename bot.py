@@ -275,5 +275,7 @@ async def invite_member_to_voice_channel(members_in_same_game, channel: discord.
             await bot.send_message(member, "Greetings " + str(member.name) + "! Due to the fact that you are currently playing " + str(member.game.name) + ", I have moved you to a more appropriate voice room so you can join your friends.", tts=True)
             await log_msg_to_Discord_pm(str(member.name) + " was MOVED to " + str(channel.name))
 
-
-bot.run('MzQzNjA5MzU1NjE2MjU2MDAy.DGgqrg.ay5X3gnRcubRidHPynYZ51ayzNg')
+token = ""
+with open('myfile.txt', 'r') as f:
+    token= f.readline()
+bot.run(token)
