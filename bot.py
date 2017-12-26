@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 # Globals
 alertsOn = True
 messages_waiting_to_send = []
-users_to_ignore = ["radagastthe3rd", "Nightbot", "Kaybear 🐻", "Dalooka", "Sigmar", "cculhane", "cactusfuzz", "slimy529"]
+users_to_ignore = ["radagastthe3rd", "Nightbot", "Kaybear 🐻", "cculhane", "cactusfuzz"]
 
 @bot.event
 async def on_ready():
