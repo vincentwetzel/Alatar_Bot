@@ -42,12 +42,11 @@ async def on_message(message):
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
-    msg = ""
-
     if str(before.status) == "offline" and str(after.status) == "offline":
         msg = str(before.name) + " is in OFFLINE MODE."
     elif before.status != after.status:
-        msg = ((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44, ' ') + "(was " + str(before.status).upper() + ")"
+        msg = (((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44, ' ')
+               + "(was " + str(before.status).upper() + ")")
     elif before.game != after.game:
         if after.game is None:
             msg = str(before.name + " STOPPED playing: ").ljust(35, ' ') + before.game.name
@@ -61,11 +60,14 @@ async def on_member_update(before: discord.Member, after: discord.Member):
 
             if len(members_in_same_game) > 1:
                 if str(after.game.name) == "PLAYERUNKNOWN'S BATTLEGROUNDS" or str(after.game.name) == "PUBG":
-                    await invite_member_to_voice_channel(members_in_same_game, bot.get_channel('335193104703291393'))  # PUBG Rage-Fest
+                    await invite_member_to_voice_channel(members_in_same_game,
+                                                         bot.get_channel('335193104703291393'))  # PUBG Rage-Fest
                 elif str(after.game.name) == "League of Legends":
-                    await invite_member_to_voice_channel(members_in_same_game, bot.get_channel('349099177189310475'))  # Teemo's Treehouse
+                    await invite_member_to_voice_channel(members_in_same_game,
+                                                         bot.get_channel('349099177189310475'))  # Teemo's Treehouse
                 else:
-                    await invite_member_to_voice_channel(members_in_same_game, bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
+                    await invite_member_to_voice_channel(members_in_same_game,
+                                                         bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
     elif before.nick != after.nick:
         if after.nick is None:
@@ -102,7 +104,9 @@ async def on_member_update(before: discord.Member, after: discord.Member):
 
 @bot.event
 async def on_member_ban(member: discord.Member):
-    msg = "Holy cats, " + str(member.name) + " just received the full wrath of the ban hammer! Bye bye nerd! Don't come back to " + str(member.server) + "!"
+    msg = ("Holy cats, " + str(member.name)
+           + " just received the full wrath of the ban hammer! Bye bye nerd! Don't come back to "
+           + str(member.server) + "!")
     await bot.send_message(member.server, msg, tts=True)
 
 
@@ -148,7 +152,6 @@ async def on_member_remove(member: discord.Member):
 
 @bot.event
 async def on_voice_state_update(before: discord.Member, after: discord.Member):
-    msg = ""
     if str(after.voice.voice_channel) != "None":
         msg = before.name + " joined voice channel: ".ljust(25, ' ') + str(after.voice.voice_channel)
     else:
@@ -241,7 +244,8 @@ async def pad_message(msg, add_time_and_date=True, dash_count=80):
 
 
 async def add_time_and_date_to_string(msg):
-    return msg.ljust(59, ' ') + datetime.now().strftime("%I:%M:%S %p").ljust(13, ' ') + datetime.now().strftime("%m-%d-%y")
+    return (msg.ljust(59, ' ') + datetime.now().strftime("%I:%M:%S %p").ljust(13, ' ')
+            + datetime.now().strftime("%m-%d-%y"))
 
 
 async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
@@ -262,7 +266,9 @@ async def log_user_activity_to_file(name, msg):
 
 async def invite_member_to_voice_channel(members_in_same_game, channel: discord.Channel):
     inv = await (bot.create_invite(channel, max_age=3600))  # general channel
-    msg = "You are not the only person playing " + str(members_in_same_game[0].game) + ". Here's a voice room you can join your friends in: https://discord.gg/"
+    msg = ("You are not the only person playing "
+           + str(members_in_same_game[0].game)
+           + ". Here's a voice room you can join your friends in: https://discord.gg/")
     for member in members_in_same_game:
         # print("Current voice channel for " + str(member.name) + ": " + str(member.voice.voice_channel))
         if member.voice.voice_channel == channel:
@@ -272,10 +278,13 @@ async def invite_member_to_voice_channel(members_in_same_game, channel: discord.
             await log_msg_to_Discord_pm(str(member.name) + " was INVITED to " + str(channel.name))
         else:
             await bot.move_member(member, channel)  # PUBG Rage-Fest
-            await bot.send_message(member, "Greetings " + str(member.name) + "! Due to the fact that you are currently playing " + str(member.game.name) + ", I have moved you to a more appropriate voice room so you can join your friends.", tts=True)
+            await bot.send_message(member, "Greetings " + str(member.name)
+                                   + "! Due to the fact that you are currently playing " + str(member.game.name)
+                                   + ", I have moved you to a more appropriate"
+                                   + " voice room so you can join your friends.",
+                                   tts=True)
             await log_msg_to_Discord_pm(str(member.name) + " was MOVED to " + str(channel.name))
 
-token = ""
 with open('token.txt', 'r') as f:
-    token = f.readline().rstrip('\n') # readline() usually has a \n at the end of it
+    token = f.readline().rstrip('\n')  # readline() usually has a \n at the end of it
 bot.run(token)
