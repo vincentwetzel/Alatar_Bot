@@ -1,8 +1,10 @@
-#v1.03
+#v1.05
 
 import discord
 from discord.ext import commands
 from datetime import datetime
+from sys import exit
+import os.path
 import logging
 
 # logging
@@ -19,12 +21,25 @@ bot = commands.Bot(command_prefix='!', description=description)
 # Globals
 alertsOn = True
 messages_waiting_to_send = []
-users_to_ignore = ["radagastthe3rd", "Nightbot", "Kaybear 🐻", "cculhane", "cactusfuzz"]
+users_to_ignore = []
 
 @bot.event
 async def on_ready():
     msg = await pad_message("AlatarBot is now online!") + "\n"
     await log_msg_to_Discord_pm(msg, False)
+
+    users_to_ignore_file = "users_to_ignore.txt"
+    global users_to_ignore
+    if os.path.exists(users_to_ignore_file):
+        with open(users_to_ignore_file, 'r') as f:  # 'r' is reading mode, stream positioned at start of file
+            for line in f:
+                line = line.strip('\n')
+                users_to_ignore.append(line)
+        f.close()
+    else:
+        with open(users_to_ignore_file, 'a') as f:  # 'a' opens for writing without truncating, creates file if needed
+            f.close()
+    print(users_to_ignore)
 
 
 @bot.event
@@ -112,40 +127,22 @@ async def on_member_ban(member: discord.Member):
 
 @bot.event
 async def on_member_join(member):
+    await bot.send_message(member.server.default_channel, "Welcome " + member.name + " to " + member.server.name + "!")
 
     msg = str(member.name) + " has joined " + str(member.server.name) + "!"
-    '''
-    # pleb_role = discord.utils.get(member.server.roles, name="Plebs")
-
-    print("CHANNELS:")
-    print(list(member.server.channels))
-
-    dc = member.server.default_channel
-    print(dc)
-    print(type(dc))
-    
-    await bot.send_message(dc, "Welcome " + member.name + " to " + member.server.name + "!")
-    '''
     await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
-    # await bot.add_roles(member, pleb_role)
+    pleb_role = discord.utils.get(member.server.roles, name="Plebs")
+    await bot.add_roles(member, pleb_role)
 
 
 @bot.event
 async def on_member_remove(member: discord.Member):
 
-    '''
-    pos = 0
-    # channel = list(member.server.channels)[0]
-    channel = next(iter(member.server.channels.values()))
-    while channel.type != discord.ChannelType.text:
-        pos += 1
-        channel = list(member.server.channels)
-    '''
-    msg = str(member.name) + " has left " + str(member.server)
+    msg = str(member.name) + " has left " + str(member.server) + "."
 
-    # await bot.send_message(member.server, msg + ", may he rest in peace.", tts=True)
+    await bot.send_message(member.server.default_channel, msg)
     await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
@@ -172,12 +169,6 @@ async def on_channel_delete(channel: discord.Channel):
     return # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     # if not channel.is_private:
         # await bot.send_message(channel.server.default_channel, "The " + str(channel.type) + " channel known as \"" + str(channel.name) + "\" has been deleted. Let us have a moment of silence.", tts=True)
-
-
-@bot.command()
-async def add(left: int, right: int):
-    """Adds two numbers together."""
-    await bot.say(left + right)
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -210,6 +201,58 @@ async def off(context):
     alertsOn = True
     await log_msg_to_Discord_pm("Notifications are OFF")
     alertsOn = False
+
+@bot.command(pass_context=True, hidden=True)
+async def ignore(context, user_to_ignore):
+    user_to_ignore = user_to_ignore.strip('\n')
+
+    global users_to_ignore
+
+    with open("users_to_ignore.txt", 'a') as f:  # 'a' opens for appending without truncating
+        f.write(user_to_ignore + "\n")
+        users_to_ignore.append(user_to_ignore)
+    f.close()
+    await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
+    await print_ignored()
+
+
+@bot.command(pass_context=True, hidden=True)
+async def unignore(context, user_to_unignore):
+    global users_to_ignore
+    if user_to_unignore not in users_to_ignore:
+        await log_msg_to_Discord_pm(user_to_unignore + " is not currently being ignored.")
+        return
+    else:
+        users_to_ignore.remove(user_to_unignore)
+        with open("users_to_ignore.txt", 'w') as f:  # 'r+' opens for read/write and starts at beginning of file
+            for user in users_to_ignore:
+                f.write(user + '\n')
+        f.close()
+    await print_ignored()
+
+
+@bot.command(pass_context=True, hidden=True)
+async def unignoreall():
+    global users_to_ignore
+    users_to_ignore.clear()
+    users_to_ignore_file = "users_to_ignore.txt"
+    with open(users_to_ignore_file, 'w') as f:  # 'a' opens for writing without truncating, creates file if needed
+        f.close()
+    log_msg_to_Discord_pm("No users are being ignored.")
+
+
+async def print_ignored():
+    # Print all the users now ignored
+    msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
+    for user in users_to_ignore:
+        msg = msg + user + '\n'
+    msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
+    await log_msg_to_Discord_pm(msg, False)
+
+
+@bot.command(pass_context=True)
+async def printignored():
+    await print_ignored()
 
 
 @bot.command(pass_context=True)
@@ -259,7 +302,8 @@ async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
 
 async def log_user_activity_to_file(name, msg):
     msg = await add_time_and_date_to_string(msg)
-    file = open("logs/" + name + ".txt", "a")
+    filepath = "logs/" + name + ".txt"
+    file = open(filepath, "a+")   # "a+" parameter means append mode, the + means create the file if it doesn't exist.
     file.write(msg + "\n")
     file.close()
 
@@ -285,6 +329,22 @@ async def invite_member_to_voice_channel(members_in_same_game, channel: discord.
                                    tts=True)
             await log_msg_to_Discord_pm(str(member.name) + " was MOVED to " + str(channel.name))
 
-with open('token.txt', 'r') as f:
-    token = f.readline().rstrip('\n')  # readline() usually has a \n at the end of it
-bot.run(token)
+
+def initialize_bot_token():
+    token_file = "token.txt"
+    if not os.path.exists(token_file):
+        with open(token_file, 'a') as f:    # 'a' opens for appending without truncating
+            token = input("The token file does not exist. Please enter the bot's token: ")
+            f.write(token)
+            f.close()
+    else:
+        with open(token_file, 'r+') as f:  # 'r+' is reading/writing mode, stream positioned at start of file
+            token = f.readline().rstrip('\n')  # readline() usually has a \n at the end of it
+            if not token:
+                token = input("The token file is empty. Please enter the bot's token: ")
+                f.write(token)
+            f.close()
+    return token
+
+
+bot.run(initialize_bot_token())
