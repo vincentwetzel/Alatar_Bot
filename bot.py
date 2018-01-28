@@ -6,7 +6,6 @@ from datetime import datetime
 import os.path
 import logging
 from threading import Timer
-import re
 
 # logging
 logger = logging.getLogger('discord')
