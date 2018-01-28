@@ -1,11 +1,12 @@
-#v1.05
+#v1.06
 
 import discord
 from discord.ext import commands
 from datetime import datetime
-from sys import exit
 import os.path
 import logging
+from threading import Timer
+import re
 
 # logging
 logger = logging.getLogger('discord')
@@ -22,6 +23,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 alertsOn = True
 messages_waiting_to_send = []
 users_to_ignore = []
+players_seeking_friends = []
 
 @bot.event
 async def on_ready():
@@ -39,7 +41,6 @@ async def on_ready():
     else:
         with open(users_to_ignore_file, 'a') as f:  # 'a' opens for writing without truncating, creates file if needed
             f.close()
-    print(users_to_ignore)
 
 
 @bot.event
@@ -69,7 +70,9 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
             # Voice Room controls
             members_in_same_game = [after]  # initialize list with one member in it
-            for member in after.server.members:
+            global players_seeking_friends
+            players_seeking_friends.append(after)
+            for member in players_seeking_friends:
                 if str(member.game) == str(after.game) and member != after:
                     members_in_same_game.append(member)
 
@@ -83,6 +86,9 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                 else:
                     await invite_member_to_voice_channel(members_in_same_game,
                                                          bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
+
+            t = Timer(300.0, pop_member_from_voice_room_seek, args=(after,))
+            t.start()
 
     elif before.nick != after.nick:
         if after.nick is None:
@@ -122,18 +128,20 @@ async def on_member_ban(member: discord.Member):
     msg = ("Holy cats, " + str(member.name)
            + " just received the full wrath of the ban hammer! Bye bye nerd! Don't come back to "
            + str(member.server) + "!")
-    await bot.send_message(member.server, msg, tts=True)
+    await bot.send_message(await get_default_text_channel(member.server), msg, tts=True)
 
 
 @bot.event
 async def on_member_join(member):
-    await bot.send_message(member.server.default_channel, "Welcome " + member.name + " to " + member.server.name + "!")
+    await bot.send_message(await get_default_text_channel(member.server), "Welcome " + member.name + " to " + member.server.name + "!")
 
     msg = str(member.name) + " has joined " + str(member.server.name) + "!"
     await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
     pleb_role = discord.utils.get(member.server.roles, name="Plebs")
+    if pleb_role is None:
+        pleb_role = await bot.create_role(member.server, name="Plebs", id="Plebs", hoist=True)
     await bot.add_roles(member, pleb_role)
 
 
@@ -142,7 +150,7 @@ async def on_member_remove(member: discord.Member):
 
     msg = str(member.name) + " has left " + str(member.server) + "."
 
-    await bot.send_message(member.server.default_channel, msg)
+    await bot.send_message(await get_default_text_channel(member.server), msg)
     await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
@@ -160,15 +168,13 @@ async def on_voice_state_update(before: discord.Member, after: discord.Member):
 async def on_channel_create(channel: discord.Channel):
     if not channel.is_private:
         msg = "A new " + str(channel.type) + " channel named \"" + str(channel.name) + "\" has been created."
-        # await bot.send_message(channel.server.default_channel, msg, tts=True) # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        await bot.send_message(await get_default_text_channel(channel.server), msg, tts=True)
         await log_msg_to_Discord_pm(msg)
 
 
 @bot.event
 async def on_channel_delete(channel: discord.Channel):
-    return # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    # if not channel.is_private:
-        # await bot.send_message(channel.server.default_channel, "The " + str(channel.type) + " channel known as \"" + str(channel.name) + "\" has been deleted. Let us have a moment of silence.", tts=True)
+    await bot.send_message(await get_default_text_channel(channel.server), "The " + str(channel.type) + " channel \"" + str(channel.name) + "\" has been deleted.", tts=True)
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -346,5 +352,24 @@ def initialize_bot_token():
             f.close()
     return token
 
+
+async def get_default_text_channel(server):
+    default_text_channel = None
+    idx = 0
+    default_text_channel = None
+    for channel in list(server.channels):
+        if channel.type == discord.ChannelType.text:  # 0 type is text, 1 type is voice
+            default_text_channel = channel
+            break
+    if default_text_channel == None:
+        default_text_channel = await bot.create_channel(server, "general", type=discord.ChannelType.text)
+
+    return default_text_channel
+
+def pop_member_from_voice_room_seek(member):
+    print("REMOVING MEMBER FROM SEEK...")
+    global players_seeking_friends
+    players_seeking_friends.remove(member)
+    print("complete...")
 
 bot.run(initialize_bot_token())
