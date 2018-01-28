@@ -367,9 +367,7 @@ async def get_default_text_channel(server):
     return default_text_channel
 
 def pop_member_from_voice_room_seek(member):
-    print("REMOVING MEMBER FROM SEEK...")
     global players_seeking_friends
     players_seeking_friends.remove(member)
-    print("complete...")
 
 bot.run(initialize_bot_token())
