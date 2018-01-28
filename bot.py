@@ -255,7 +255,7 @@ async def print_ignored():
     await log_msg_to_Discord_pm(msg, False)
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, hidden=True)
 async def printignored():
     await print_ignored()
 
