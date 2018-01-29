@@ -214,6 +214,9 @@ async def off(context):
 
 @bot.command(pass_context=True, hidden=True)
 async def ignore(context, user_to_ignore):
+    if context.message.author.name != "radagastthe3rd":
+        return
+
     user_to_ignore = user_to_ignore.strip('\n')
 
     global users_to_ignore
@@ -232,6 +235,9 @@ async def ignore(context, user_to_ignore):
 
 @bot.command(pass_context=True, hidden=True)
 async def unignore(context, user_to_unignore):
+    if context.message.author.name != "radagastthe3rd":
+        return
+
     global users_to_ignore
     if user_to_unignore not in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_unignore + " is not currently being ignored.")
@@ -246,7 +252,10 @@ async def unignore(context, user_to_unignore):
 
 
 @bot.command(pass_context=True, hidden=True)
-async def unignoreall():
+async def unignoreall(context):
+    if context.message.author.name != "radagastthe3rd":
+        return
+
     global users_to_ignore
     users_to_ignore.clear()
     users_to_ignore_file = "users_to_ignore.txt"
@@ -254,23 +263,9 @@ async def unignoreall():
         f.close()
     await log_msg_to_Discord_pm("Ignore list has been cleared.")
 
-
-async def print_ignored():
-    # Print all the users now ignored
-    msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
-    for user in users_to_ignore:
-        msg = msg + user + '\n'
-    msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-    await log_msg_to_Discord_pm(msg, False)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def printignored():
-    await print_ignored()
-
-
 @bot.command(pass_context=True)
 async def invite(context, member_to_invite: discord.Member):
+
     """Invites another user to join your current voice room."""
     if context.message.author.voice.voice_channel is None:
         return
@@ -287,6 +282,39 @@ async def invite(context, member_to_invite: discord.Member):
 
     msg = str(author.name) + " has invited " + str(member_to_invite.name) + " to the voice room " + str(voice_room.name)
     await log_msg_to_Discord_pm(msg)
+
+
+@bot.command(pass_context=True, hidden=True)
+async def printignored(context):
+    if context.message.author.name != "radagastthe3rd":
+        return
+
+    global users_to_ignore
+
+    if not users_to_ignore:
+        await log_msg_to_Discord_pm("There are currently no members being ignored.", False)
+    else:
+        msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
+        for user in users_to_ignore:
+            msg = msg + user + '\n'
+        msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
+        await log_msg_to_Discord_pm(msg, False)
+
+
+@bot.command(pass_context=True, hidden=True)
+async def printseeking(context):
+    if context.message.author.name != "radagastthe3rd":
+        return
+    global players_seeking_friends
+    if not players_seeking_friends:
+        await log_msg_to_Discord_pm("No members are currently seeking friends.")
+    else:
+        msg = await pad_message("Players Seeking Friends", add_time_and_date=False) + "\n"
+        for player in players_seeking_friends:
+            msg = msg + player.name + "\n"
+        msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
+        await log_msg_to_Discord_pm(msg, False)
+
 
 
 async def pad_message(msg, add_time_and_date=True, dash_count=80):
@@ -377,5 +405,6 @@ async def get_default_text_channel(server):
 def pop_member_from_voice_room_seek(member):
     global players_seeking_friends
     players_seeking_friends.remove(member)
+
 
 bot.run(initialize_bot_token())
