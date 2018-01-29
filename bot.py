@@ -6,6 +6,7 @@ from datetime import datetime
 import os.path
 import logging
 from threading import Timer
+import bisect
 
 # logging
 logger = logging.getLogger('discord')
@@ -132,7 +133,9 @@ async def on_member_ban(member: discord.Member):
 
 @bot.event
 async def on_member_join(member):
-    await bot.send_message(await get_default_text_channel(member.server), "Welcome " + member.name + " to " + member.server.name + "!")
+    await bot.send_message(await get_default_text_channel(member.server),
+                           "Welcome " + member.name + " to " + member.server.name + "!",
+                           tts=True)
 
     msg = str(member.name) + " has joined " + str(member.server.name) + "!"
     await log_msg_to_Discord_pm(msg)
@@ -173,7 +176,9 @@ async def on_channel_create(channel: discord.Channel):
 
 @bot.event
 async def on_channel_delete(channel: discord.Channel):
-    await bot.send_message(await get_default_text_channel(channel.server), "The " + str(channel.type) + " channel \"" + str(channel.name) + "\" has been deleted.", tts=True)
+    await bot.send_message(await get_default_text_channel(channel.server),
+                           "The " + str(channel.type) + " channel \"" + str(channel.name) + "\" has been deleted.",
+                           tts=True)
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -212,13 +217,17 @@ async def ignore(context, user_to_ignore):
     user_to_ignore = user_to_ignore.strip('\n')
 
     global users_to_ignore
+    if user_to_ignore in users_to_ignore:
+        await log_msg_to_Discord_pm(user_to_ignore + " is already being ignored.")
+    else:
+        bisect.insort(users_to_ignore, user_to_ignore)
 
-    with open("users_to_ignore.txt", 'a') as f:  # 'a' opens for appending without truncating
-        f.write(user_to_ignore + "\n")
-        users_to_ignore.append(user_to_ignore)
-    f.close()
-    await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
-    await print_ignored()
+        with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
+            for user in users_to_ignore:
+                f.write(user + '\n')
+        f.close()
+        await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
+        await print_ignored()
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -229,7 +238,7 @@ async def unignore(context, user_to_unignore):
         return
     else:
         users_to_ignore.remove(user_to_unignore)
-        with open("users_to_ignore.txt", 'w') as f:  # 'r+' opens for read/write and starts at beginning of file
+        with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
             for user in users_to_ignore:
                 f.write(user + '\n')
         f.close()
@@ -241,9 +250,9 @@ async def unignoreall():
     global users_to_ignore
     users_to_ignore.clear()
     users_to_ignore_file = "users_to_ignore.txt"
-    with open(users_to_ignore_file, 'w') as f:  # 'a' opens for writing without truncating, creates file if needed
+    with open(users_to_ignore_file, 'w') as f:  # 'w' opens for writing, creates if doesn't exist
         f.close()
-    log_msg_to_Discord_pm("No users are being ignored.")
+    await log_msg_to_Discord_pm("Ignore list has been cleared.")
 
 
 async def print_ignored():
