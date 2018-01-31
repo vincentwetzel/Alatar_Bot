@@ -184,7 +184,7 @@ async def on_channel_delete(channel: discord.Channel):
 @bot.command(pass_context=True, hidden=True)
 async def on(context):
     """Admin command"""
-    if context.message.author.name != "radagastthe3rd":
+    if context.message.author.id != "251934924196675595":
         return
 
     global alertsOn
@@ -204,7 +204,7 @@ async def on(context):
 @bot.command(pass_context=True, hidden=True)
 async def off(context):
     """Admin command"""
-    if context.message.author.name != "radagastthe3rd":
+    if context.message.author.id != "251934924196675595":
         return
 
     global alertsOn
@@ -214,7 +214,8 @@ async def off(context):
 
 @bot.command(pass_context=True, hidden=True)
 async def ignore(context, user_to_ignore):
-    if context.message.author.name != "radagastthe3rd":
+    """Admin command"""
+    if context.message.author.id != "251934924196675595":
         return
 
     user_to_ignore = user_to_ignore.strip('\n')
@@ -235,7 +236,8 @@ async def ignore(context, user_to_ignore):
 
 @bot.command(pass_context=True, hidden=True)
 async def unignore(context, user_to_unignore):
-    if context.message.author.name != "radagastthe3rd":
+    """Admin command"""
+    if context.message.author.id != "251934924196675595":
         return
 
     global users_to_ignore
@@ -253,7 +255,8 @@ async def unignore(context, user_to_unignore):
 
 @bot.command(pass_context=True, hidden=True)
 async def unignoreall(context):
-    if context.message.author.name != "radagastthe3rd":
+    """Admin command"""
+    if context.message.author.id != "251934924196675595":
         return
 
     global users_to_ignore
@@ -286,10 +289,14 @@ async def invite(context, member_to_invite: discord.Member):
 
 @bot.command(pass_context=True, hidden=True)
 async def printignored(context):
+    """Admin command"""
+    if context.message.author.id != "251934924196675595":
+        return
     await print_ignored(context)
 
 async def print_ignored(context):
-    if context.message.author.name != "radagastthe3rd":
+    """Admin method"""
+    if context.message.author.id != "251934924196675595":
         return
 
     global users_to_ignore
@@ -306,8 +313,10 @@ async def print_ignored(context):
 
 @bot.command(pass_context=True, hidden=True)
 async def printseeking(context):
-    if context.message.author.name != "radagastthe3rd":
+    """Admin command"""
+    if context.message.author.id != "251934924196675595":
         return
+
     global players_seeking_friends
     if not players_seeking_friends:
         await log_msg_to_Discord_pm("No members are currently seeking friends.")
