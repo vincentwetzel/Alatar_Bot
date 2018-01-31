@@ -6,7 +6,7 @@ from datetime import datetime
 import os.path
 import logging
 from threading import Timer
-import bisect
+from bisect import bisect
 
 # logging
 logger = logging.getLogger('discord')
