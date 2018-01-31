@@ -248,7 +248,7 @@ async def unignore(context, user_to_unignore):
             for user in users_to_ignore:
                 f.write(user + '\n')
         f.close()
-    await print_ignored()
+    await print_ignored(context)
 
 
 @bot.command(pass_context=True, hidden=True)
