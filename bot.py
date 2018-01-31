@@ -230,7 +230,7 @@ async def ignore(context, user_to_ignore):
                 f.write(user + '\n')
         f.close()
         await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
-        await printignored()
+        await print_ignored()
 
 
 @bot.command(pass_context=True, hidden=True)
