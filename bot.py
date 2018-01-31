@@ -218,7 +218,6 @@ async def ignore(context, user_to_ignore):
         return
 
     user_to_ignore = user_to_ignore.strip('\n')
-    print(user_to_ignore + " is now being ignored.")
 
     global users_to_ignore
     if user_to_ignore in users_to_ignore:
@@ -249,7 +248,7 @@ async def unignore(context, user_to_unignore):
             for user in users_to_ignore:
                 f.write(user + '\n')
         f.close()
-    await printignored()
+    await print_ignored()
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -287,6 +286,9 @@ async def invite(context, member_to_invite: discord.Member):
 
 @bot.command(pass_context=True, hidden=True)
 async def printignored(context):
+    await print_ignored()
+
+async def print_ignored()
     if context.message.author.name != "radagastthe3rd":
         return
 
