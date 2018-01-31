@@ -223,7 +223,7 @@ async def ignore(context, user_to_ignore):
     if user_to_ignore in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_ignore + " is already being ignored.")
     else:
-        bisect.insort(users_to_ignore, user_to_ignore)
+        bisect.insort([i.lower() for i in users_to_ignore], user_to_ignore.lower())
 
         with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
             for user in users_to_ignore:
