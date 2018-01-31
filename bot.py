@@ -218,6 +218,7 @@ async def ignore(context, user_to_ignore):
         return
 
     user_to_ignore = user_to_ignore.strip('\n')
+    print(user_to_ignore + " is now being ignored.")
 
     global users_to_ignore
     if user_to_ignore in users_to_ignore:
