@@ -288,7 +288,7 @@ async def invite(context, member_to_invite: discord.Member):
 async def printignored(context):
     await print_ignored()
 
-async def print_ignored()
+async def print_ignored():
     if context.message.author.name != "radagastthe3rd":
         return
 
