@@ -67,28 +67,30 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         if after.game is None:
             msg = str(before.name + " STOPPED playing: ").ljust(35, ' ') + before.game.name
         else:
-            msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
-            # Voice Room controls
-            members_in_same_game = [after]  # initialize list with one member in it
             global players_seeking_friends
-            players_seeking_friends.append(after)
-            for member in players_seeking_friends:
-                if str(member.game) == str(after.game) and member != after:
-                    members_in_same_game.append(member)
+            if after not in players_seeking_friends:
+                msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
+                # Voice Room controls
+                members_in_same_game = [after]  # initialize list with one member in it
 
-            if len(members_in_same_game) > 1:
-                if str(after.game.name) == "PLAYERUNKNOWN'S BATTLEGROUNDS" or str(after.game.name) == "PUBG":
-                    await invite_member_to_voice_channel(members_in_same_game,
-                                                         bot.get_channel('335193104703291393'))  # PUBG Rage-Fest
-                elif str(after.game.name) == "League of Legends":
-                    await invite_member_to_voice_channel(members_in_same_game,
-                                                         bot.get_channel('349099177189310475'))  # Teemo's Treehouse
-                else:
-                    await invite_member_to_voice_channel(members_in_same_game,
-                                                         bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
+                players_seeking_friends.append(after)   # <----------------- can I remove this and do it in the loop?
+                for member in players_seeking_friends:
+                    if str(member.game) == str(after.game) and member != after:
+                        members_in_same_game.append(member)
 
-            t = Timer(300.0, pop_member_from_voice_room_seek, args=(after,))
-            t.start()
+                if len(members_in_same_game) > 1:
+                    if str(after.game.name) == "PLAYERUNKNOWN'S BATTLEGROUNDS" or str(after.game.name) == "PUBG":
+                        await invite_member_to_voice_channel(members_in_same_game,
+                                                             bot.get_channel('335193104703291393'))  # PUBG Rage-Fest
+                    elif str(after.game.name) == "League of Legends":
+                        await invite_member_to_voice_channel(members_in_same_game,
+                                                             bot.get_channel('349099177189310475'))  # Teemo's Treehouse
+                    else:
+                        await invite_member_to_voice_channel(members_in_same_game,
+                                                             bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
+
+                t = Timer(300.0, pop_member_from_voice_room_seek, args=(after,))
+                t.start()
 
     elif before.nick != after.nick:
         if after.nick is None:
@@ -270,7 +272,7 @@ async def unignoreall(context):
 async def invite(context, member_to_invite: discord.Member):
 
     """Invites another user to join your current voice room."""
-    if context.message.author.voice.voice_channel is None:
+    if context.message.author.voice.voice_channel is None:  # TODO: Fix this???????????????????????????????????????
         return
     author = context.message.author
     voice_room = author.voice.voice_channel
@@ -362,20 +364,20 @@ async def log_user_activity_to_file(name, msg):
     file.close()
 
 
-async def invite_member_to_voice_channel(members_in_same_game, channel: discord.Channel):
+async def invite_member_to_voice_channel(members_in_same_game, channel):
     inv = await (bot.create_invite(channel, max_age=3600))  # general channel
-    msg = ("You are not the only person playing "
-           + str(members_in_same_game[0].game)
-           + ". Here's a voice room you can join your friends in: https://discord.gg/")
     for member in members_in_same_game:
-        # print("Current voice channel for " + str(member.name) + ": " + str(member.voice.voice_channel))
         if member.voice.voice_channel == channel:
             continue
-        elif str(member.voice.voice_channel) == "None":  # is NOT in voice channel
-            await bot.send_message(member, msg + inv.code, tts=True)
+        elif str(member.voice.voice_channel) is None:  # is NOT in voice channel
+            print("User is currently in " + str(channel.name))
+            await bot.send_message(member, "You are not the only person playing "
+                                   + str(members_in_same_game[0].game)
+                                   + ". Here's a voice room you can join your friends in: https://discord.gg/"
+                                   + inv.code, tts=True)
             await log_msg_to_Discord_pm(str(member.name) + " was INVITED to " + str(channel.name))
         else:
-            await bot.move_member(member, channel)  # PUBG Rage-Fest
+            await bot.move_member(member, channel)
             await bot.send_message(member, "Greetings " + str(member.name)
                                    + "! Due to the fact that you are currently playing " + str(member.game.name)
                                    + ", I have moved you to a more appropriate"
