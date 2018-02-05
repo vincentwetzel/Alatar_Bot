@@ -75,7 +75,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
 
                 players_seeking_friends.append(after)   # <----------------- can I remove this and do it in the loop?
                 for member in players_seeking_friends:
-                    if str(member.game) == str(after.game) and member != after:
+                    if member != after and str(member.game) == str(after.game) and member.server == after.server:
                         members_in_same_game.append(member)
 
                 if len(members_in_same_game) > 1:
@@ -369,7 +369,7 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
     for member in members_in_same_game:
         if member.voice.voice_channel == channel:
             continue
-        elif str(member.voice.voice_channel) is None:  # is NOT in voice channel
+        elif member.voice.voice_channel is None:  # is NOT in voice channel
             print("User is currently in " + str(channel.name))
             await bot.send_message(member, "You are not the only person playing "
                                    + str(members_in_same_game[0].game)
