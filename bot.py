@@ -67,9 +67,10 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         if after.game is None:
             msg = str(before.name + " STOPPED playing: ").ljust(35, ' ') + before.game.name
         else:
+            msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
+            
             global players_seeking_friends
             if after not in players_seeking_friends:
-                msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
                 # Voice Room controls
                 members_in_same_game = [after]  # initialize list with one member in it
 
