@@ -273,7 +273,7 @@ async def unignoreall(context):
 async def invite(context, member_to_invite: discord.Member):
 
     """Invites another user to join your current voice room."""
-    if context.message.author.voice.voice_channel is None:  # TODO: Fix this???????????????????????????????????????
+    if context.message.author.voice.voice_channel is None:
         return
     author = context.message.author
     voice_room = author.voice.voice_channel
