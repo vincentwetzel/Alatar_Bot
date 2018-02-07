@@ -162,7 +162,7 @@ async def on_member_remove(member: discord.Member):
 
 @bot.event
 async def on_voice_state_update(before: discord.Member, after: discord.Member):
-    if str(after.voice.voice_channel) != "None":
+    if after.voice.voice_channel != None:
         msg = before.name + " joined voice channel: ".ljust(25, ' ') + str(after.voice.voice_channel)
     else:
         msg = before.name + " left voice channel: ".ljust(25, ' ') + str(before.voice.voice_channel)
