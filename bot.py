@@ -329,7 +329,7 @@ async def print_not_ignored(context):
 
     global users_to_ignore
 
-    msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
+    msg = await pad_message("Users Not Ignored", add_time_and_date=False) + "\n"
     users_not_ignored = list()
     for server in bot.servers:
         for member in server.members:
