@@ -335,7 +335,7 @@ async def print_not_ignored(context):
         for member in server.members:
             if member.name not in users_to_ignore and member.name not in users_not_ignored:
                 users_not_ignored.append(member.name)
-    for users in users_not_ignored:
+    for user in users_not_ignored:
         msg = msg + user + '\n'
     msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
     await log_msg_to_Discord_pm(msg, False)
