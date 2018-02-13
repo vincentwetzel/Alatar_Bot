@@ -39,8 +39,8 @@ async def on_ready():
                 line = line.strip('\n')
                 users_to_ignore.append(line)
     else:
-        with open(users_to_ignore_file, 'a') as f:  # 'a' opens for writing without truncating, creates file if needed
-    # Do nothing
+        file = open(users_to_ignore_file, "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
+        file.close()
 
 
 @bot.event
@@ -90,7 +90,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                         await invite_member_to_voice_channel(members_in_same_game,
                                                              bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
-                t = Timer(300.0, pop_member_from_voice_room_seek, args=(after,))
+                t = Timer(300.0, pop_member_from_voice_room_seek(after))
                 t.start()
 
     elif before.nick != after.nick:
