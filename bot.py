@@ -75,6 +75,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                 members_in_same_game = [after]  # initialize list with one member in it
 
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
+                print(after.name, "added to players_seeking_friends")
                 for member in players_seeking_friends:
                     if member != after and str(member.game) == str(after.game) and member.server == after.server:
                         members_in_same_game.append(member)
@@ -90,7 +91,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                         await invite_member_to_voice_channel(members_in_same_game,
                                                              bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
-                t = Timer(300.0, pop_member_from_voice_room_seek(after))
+                t = Timer(300.0, pop_member_from_voice_room_seek, args=(after, ))
                 t.start()
 
     elif before.nick != after.nick:
@@ -123,7 +124,6 @@ async def on_member_update(before: discord.Member, after: discord.Member):
     global users_to_ignore
     if str(after.name) not in users_to_ignore:
         await log_msg_to_Discord_pm(msg)
-    # await log_msg_to_Discord_pm(msg) # FOR TESTING ONLY, send alert regardless of author
 
 
 @bot.event
@@ -451,6 +451,7 @@ async def get_default_text_channel(server):
 def pop_member_from_voice_room_seek(member):
     global players_seeking_friends
     players_seeking_friends.remove(member)
+    print(member.name, "removed from voice room")
 
 
 bot.run(initialize_bot_token())
