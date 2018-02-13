@@ -1,4 +1,4 @@
-#v1.06
+# v1.07
 
 import discord
 from discord.ext import commands
@@ -25,6 +25,7 @@ messages_waiting_to_send = []
 users_to_ignore = []
 players_seeking_friends = []
 
+
 @bot.event
 async def on_ready():
     msg = await pad_message("AlatarBot is now online!") + "\n"
@@ -37,10 +38,9 @@ async def on_ready():
             for line in f:
                 line = line.strip('\n')
                 users_to_ignore.append(line)
-        f.close()
     else:
         with open(users_to_ignore_file, 'a') as f:  # 'a' opens for writing without truncating, creates file if needed
-            f.close()
+    # Do nothing
 
 
 @bot.event
@@ -68,13 +68,13 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             msg = str(before.name + " STOPPED playing: ").ljust(35, ' ') + before.game.name
         else:
             msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.game.name
-            
+
             global players_seeking_friends
             if after not in players_seeking_friends:
                 # Voice Room controls
                 members_in_same_game = [after]  # initialize list with one member in it
 
-                players_seeking_friends.append(after)   # <----------------- can I remove this and do it in the loop?
+                players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
                 for member in players_seeking_friends:
                     if member != after and str(member.game) == str(after.game) and member.server == after.server:
                         members_in_same_game.append(member)
@@ -152,7 +152,6 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_remove(member: discord.Member):
-
     msg = str(member.name) + " has left " + str(member.server) + "."
 
     await bot.send_message(await get_default_text_channel(member.server), msg)
@@ -199,7 +198,7 @@ async def on(context):
     if messages_waiting_to_send:
         await log_msg_to_Discord_pm(await pad_message("Suppressed Notifications", False), False)
         while messages_waiting_to_send:
-            msg = messages_waiting_to_send.pop(0)   # pop from FRONT of list
+            msg = messages_waiting_to_send.pop(0)  # pop from FRONT of list
             await log_msg_to_Discord_pm(msg, False)
         await  log_msg_to_Discord_pm(await pad_message("End", False), False)
 
@@ -214,6 +213,7 @@ async def off(context):
     alertsOn = True
     await log_msg_to_Discord_pm("Notifications are OFF")
     alertsOn = False
+
 
 @bot.command(pass_context=True, hidden=True)
 async def ignore(context, user_to_ignore):
@@ -232,7 +232,7 @@ async def ignore(context, user_to_ignore):
         with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
             for user in users_to_ignore:
                 f.write(user + '\n')
-        f.close()
+        # f.close() # Do not need this line because file was opened using "with"
         await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
         await print_ignored(context)
 
@@ -252,7 +252,7 @@ async def unignore(context, user_to_unignore):
         with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
             for user in users_to_ignore:
                 f.write(user + '\n')
-        f.close()
+        # f.close()  # Do not need this line because file was opened using "with"
     await print_ignored(context)
 
 
@@ -265,13 +265,15 @@ async def unignoreall(context):
     global users_to_ignore
     users_to_ignore.clear()
     users_to_ignore_file = "users_to_ignore.txt"
-    with open(users_to_ignore_file, 'w') as f:  # 'w' opens for writing, creates if doesn't exist
-        f.close()
+
+    # Write a new file
+    file = open(users_to_ignore_file, "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
+    file.close()
     await log_msg_to_Discord_pm("Ignore list has been cleared.")
+
 
 @bot.command(pass_context=True)
 async def invite(context, member_to_invite: discord.Member):
-
     """Invites another user to join your current voice room."""
     if context.message.author.voice.voice_channel is None:
         return
@@ -297,6 +299,7 @@ async def printignored(context):
         return
     else:
         await print_ignored(context)
+
 
 async def print_ignored(context):
     """Admin method"""
@@ -358,7 +361,6 @@ async def printseeking(context):
         await log_msg_to_Discord_pm(msg, False)
 
 
-
 async def pad_message(msg, add_time_and_date=True, dash_count=80):
     if add_time_and_date:
         msg = "\n" + (await add_time_and_date_to_string(msg)) + "\n"
@@ -384,12 +386,13 @@ async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
         global messages_waiting_to_send
         messages_waiting_to_send.append(msg)
 
+
 async def log_user_activity_to_file(name, msg):
     msg = await add_time_and_date_to_string(msg)
     filepath = "logs/" + name + ".txt"
-    file = open(filepath, "a+")   # "a+" parameter means append mode, the + means create the file if it doesn't exist.
-    file.write(msg + "\n")
-    file.close()
+    with open(filepath, "a+") as file:  # "a+" means append mode, create the file if it doesn't exist.
+        file.write(msg + "\n")
+        # file.close()# Do not need this line because file was opened using "with"
 
 
 async def invite_member_to_voice_channel(members_in_same_game, channel):
@@ -417,17 +420,17 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
 def initialize_bot_token():
     token_file = "token.txt"
     if not os.path.exists(token_file):
-        with open(token_file, 'a') as f:    # 'a' opens for appending without truncating
+        with open(token_file, 'a') as f:  # 'a' opens for appending without truncating
             token = input("The token file does not exist. Please enter the bot's token: ")
             f.write(token)
-            f.close()
+            # f.close()# Do not need this line because file was opened using "with"
     else:
         with open(token_file, 'r+') as f:  # 'r+' is reading/writing mode, stream positioned at start of file
             token = f.readline().rstrip('\n')  # readline() usually has a \n at the end of it
             if not token:
                 token = input("The token file is empty. Please enter the bot's token: ")
                 f.write(token)
-            f.close()
+            # f.close() # Do not need this line because file was opened using "with"
     return token
 
 
@@ -443,6 +446,7 @@ async def get_default_text_channel(server):
         default_text_channel = await bot.create_channel(server, "general", type=discord.ChannelType.text)
 
     return default_text_channel
+
 
 def pop_member_from_voice_room_seek(member):
     global players_seeking_friends
