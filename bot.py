@@ -91,7 +91,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                         await invite_member_to_voice_channel(members_in_same_game,
                                                              bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
-                t = Timer(300.0, pop_member_from_voice_room_seek, args=(after, ))
+                t = Timer(300.0, pop_member_from_voice_room_seek, [after, ])
                 t.start()
 
     elif before.nick != after.nick:
@@ -316,7 +316,8 @@ async def print_ignored(context):
             msg = msg + user + '\n'
         msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
         await log_msg_to_Discord_pm(msg, False)
-        
+
+
 @bot.command(pass_context=True, hidden=True)
 async def printnotignored(context):
     """Admin command"""
@@ -324,6 +325,7 @@ async def printnotignored(context):
         return
     else:
         await print_not_ignored(context)
+
 
 async def print_not_ignored(context):
     """Admin method"""
