@@ -442,6 +442,7 @@ def initialize_bot_token():
 
 
 async def get_default_text_channel(server):
+    # TODO: Make this so it always references a "general" text channel, create it if it doesn't exist.
     default_text_channel = None
     idx = 0
     default_text_channel = None
