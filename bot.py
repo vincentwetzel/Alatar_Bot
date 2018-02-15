@@ -227,15 +227,18 @@ async def ignore(context, user_to_ignore):
     global users_to_ignore
     if user_to_ignore in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_ignore + " is already being ignored.")
-    else:
-        users_to_ignore.insert(bisect([i.lower() for i in users_to_ignore], user_to_ignore.lower()), user_to_ignore)
 
-        with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
-            for user in users_to_ignore:
-                f.write(user + '\n')
-        # f.close() # Do not need this line because file was opened using "with"
-        await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
-        await print_ignored(context)
+    # TODO: Finish this
+    # If user is not in any of the bot's servers, ignore the ignore command
+    
+    users_to_ignore.insert(bisect([i.lower() for i in users_to_ignore], user_to_ignore.lower()), user_to_ignore)
+
+    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
+        for user in users_to_ignore:
+            f.write(user + '\n')
+    # f.close() # Do not need this line because file was opened using "with"
+    await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
+    await print_ignored(context)
 
 
 @bot.command(pass_context=True, hidden=True)
@@ -244,16 +247,17 @@ async def unignore(context, user_to_unignore):
     if context.message.author.id != "251934924196675595":
         return
 
+    # If they are not being ignored, disregard the command
     global users_to_ignore
     if user_to_unignore not in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_unignore + " is not currently being ignored.")
         return
-    else:
-        users_to_ignore.remove(user_to_unignore)
-        with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
-            for user in users_to_ignore:
-                f.write(user + '\n')
-        # f.close()  # Do not need this line because file was opened using "with"
+    
+    users_to_ignore.remove(user_to_unignore)
+    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
+        for user in users_to_ignore:
+            f.write(user + '\n')
+    # f.close()  # Do not need this line because file was opened using "with"
     await print_ignored(context)
 
 
@@ -298,8 +302,8 @@ async def printignored(context):
     """Admin command"""
     if context.message.author.id != "251934924196675595":
         return
-    else:
-        await print_ignored(context)
+    
+    await print_ignored(context)
 
 
 async def print_ignored(context):
@@ -324,8 +328,8 @@ async def printnotignored(context):
     """Admin command"""
     if context.message.author.id != "251934924196675595":
         return
-    else:
-        await print_not_ignored(context)
+    
+    await print_not_ignored(context)
 
 
 async def print_not_ignored(context):
