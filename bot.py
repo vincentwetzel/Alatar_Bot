@@ -222,15 +222,24 @@ async def ignore(context, user_to_ignore):
     if context.message.author.id != "251934924196675595":
         return
 
-    user_to_ignore = user_to_ignore.strip('\n')
-
     global users_to_ignore
     if user_to_ignore in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_ignore + " is already being ignored.")
 
-    # TODO: Finish this
     # If user is not in any of the bot's servers, ignore the ignore command
-    
+    user_found = False
+    for server in bot.servers:
+        for member in server.members:
+            if member.name == user_to_ignore:
+                user_found = True
+                break
+        if user_found:
+            break
+
+    if not user_found:
+        await log_msg_to_Discord_pm(user_to_ignore + " could not be found.")
+        return
+
     users_to_ignore.insert(bisect([i.lower() for i in users_to_ignore], user_to_ignore.lower()), user_to_ignore)
 
     with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
@@ -252,7 +261,7 @@ async def unignore(context, user_to_unignore):
     if user_to_unignore not in users_to_ignore:
         await log_msg_to_Discord_pm(user_to_unignore + " is not currently being ignored.")
         return
-    
+
     users_to_ignore.remove(user_to_unignore)
     with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
         for user in users_to_ignore:
@@ -302,7 +311,7 @@ async def printignored(context):
     """Admin command"""
     if context.message.author.id != "251934924196675595":
         return
-    
+
     await print_ignored(context)
 
 
@@ -328,7 +337,7 @@ async def printnotignored(context):
     """Admin command"""
     if context.message.author.id != "251934924196675595":
         return
-    
+
     await print_not_ignored(context)
 
 
