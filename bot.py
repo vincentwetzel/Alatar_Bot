@@ -58,7 +58,7 @@ async def on_message(message):
 
 
 @bot.event
-async def on_member_update(before: discord.Member, after: discord.Member):
+async def on_member_update(before, after):
     if str(before.status) == "offline" and str(after.status) == "offline":
         msg = str(before.name) + " is in OFFLINE MODE."
     elif before.status != after.status:
@@ -78,7 +78,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
                 print(after.name, "added to players_seeking_friends")
                 for member in players_seeking_friends:
-                    if member != after and str(member.game) == str(after.game) and member.server == after.server:
+                    if member != after and member.game.name == after.game.name and member.server == after.server:
                         members_in_same_game.append(member)
 
                 if len(members_in_same_game) > 1:
@@ -468,7 +468,7 @@ async def get_default_text_channel(server):
 def pop_member_from_voice_room_seek(member):
     global players_seeking_friends
     players_seeking_friends.remove(member)
-    print(member.name, "removed from voice room")
+    log_msg_to_Discord_pm(member.name + " was removed from players_seeking_friends")
 
 
 bot.run(initialize_bot_token())
