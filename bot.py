@@ -78,7 +78,11 @@ async def on_member_update(before, after):
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
                 log_msg_to_Discord_pm(after.name + "added to players_seeking_friends")
                 for member in players_seeking_friends:
+                    log_msg_to_Discord_pm("Looping over players_seeking_friends...")
+                    log_msg_to_Discord_pm(member.name + " is playing " + member.game.name
+                                          + " and is part of the server " + after.server.name)
                     if member != after and member.game.name == after.game.name and member.server == after.server:
+                        log_msg_to_Discord_pm(member.name + " has met the criteria for being in the same game as " + after.name)
                         members_in_same_game.append(member)
 
                 if len(members_in_same_game) > 1:
@@ -141,7 +145,7 @@ async def on_member_join(member):
                            "Welcome " + member.name + " to " + member.server.name + "!",
                            tts=True)
 
-    msg = str(member.name) + " has joined " + str(member.server.name) + "!"
+    msg = member.name + " has joined " + str(member.server.name) + "!"
     await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
