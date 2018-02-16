@@ -76,7 +76,7 @@ async def on_member_update(before, after):
                 members_in_same_game = [after]  # initialize list with one member in it
 
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
-                print(after.name, "added to players_seeking_friends")
+                log_msg_to_Discord_pm(after.name + "added to players_seeking_friends")
                 for member in players_seeking_friends:
                     if member != after and member.game.name == after.game.name and member.server == after.server:
                         members_in_same_game.append(member)
@@ -417,7 +417,6 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
         if member.voice.voice_channel == channel:
             continue
         elif member.voice.voice_channel is None:  # is NOT in voice channel
-            print("User is currently in " + str(channel.name))
             await bot.send_message(member, "You are not the only person playing "
                                    + str(members_in_same_game[0].game)
                                    + ". Here's a voice room you can join your friends in: https://discord.gg/"
