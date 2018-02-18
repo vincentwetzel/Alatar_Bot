@@ -1,4 +1,4 @@
-# v1.07
+# v1.08
 
 
 import discord
@@ -6,8 +6,8 @@ from discord.ext import commands
 from datetime import datetime
 import os.path
 import logging
-from threading import Timer
 from bisect import bisect
+import asyncio
 
 # logging
 logger = logging.getLogger('discord')
@@ -76,15 +76,13 @@ async def on_member_update(before, after):
                 members_in_same_game = [after]  # initialize list with one member in it
 
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
-                log_msg_to_Discord_pm(after.name + "added to players_seeking_friends")
                 for member in players_seeking_friends:
-                    log_msg_to_Discord_pm("Looping over players_seeking_friends...")
-                    log_msg_to_Discord_pm(member.name + " is playing " + member.game.name
-                                          + " and is part of the server " + after.server.name)
-                    if member != after and member.game.name == after.game.name and member.server == after.server:
-                        log_msg_to_Discord_pm(member.name + " has met the criteria for being in the same game as " + after.name)
+                    if member != after and member.game == after.game and member.server == after.server:
+                        await log_msg_to_Discord_pm(
+                            member.name + " has met the criteria for being in the same game as " + after.name)
                         members_in_same_game.append(member)
 
+                # If there are more than 1 players in a game, activate voice room controls
                 if len(members_in_same_game) > 1:
                     if str(after.game.name) == "PLAYERUNKNOWN'S BATTLEGROUNDS" or str(after.game.name) == "PUBG":
                         await invite_member_to_voice_channel(members_in_same_game,
@@ -96,8 +94,8 @@ async def on_member_update(before, after):
                         await invite_member_to_voice_channel(members_in_same_game,
                                                              bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
-                t = Timer(300.0, pop_member_from_voice_room_seek, [after, ])
-                t.start()
+                event_loop = asyncio.get_event_loop()
+                event_loop.call_later(10.0, pop_member_from_voice_room_seek, after)
 
     elif before.nick != after.nick:
         if after.nick is None:
@@ -410,13 +408,12 @@ async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
 async def log_user_activity_to_file(name, msg):
     msg = await add_time_and_date_to_string(msg)
     filepath = "logs/" + name + ".txt"
-    with open(filepath, "a+") as file:  # "a+" means append mode, create the file if it doesn't exist.
+    with open(filepath, "a+", encoding="utf-8") as file:  # "a+" means append mode, create the file if it doesn't exist.
         file.write(msg + "\n")
-        # file.close()# Do not need this line because file was opened using "with"
 
 
 async def invite_member_to_voice_channel(members_in_same_game, channel):
-    inv = await (bot.create_invite(channel, max_age=3600))  # general channel
+    inv = await (bot.create_invite(channel, max_age=3600))
     for member in members_in_same_game:
         if member.voice.voice_channel == channel:
             continue
@@ -454,12 +451,11 @@ def initialize_bot_token():
 
 
 async def get_default_text_channel(server):
-    # TODO: Make this so it always references a "general" text channel, create it if it doesn't exist.
     default_text_channel = None
     idx = 0
     default_text_channel = None
     for channel in list(server.channels):
-        if channel.type == discord.ChannelType.text:  # 0 type is text, 1 type is voice
+        if channel.type == discord.ChannelType.text and channel.name == "general":  # 0 type is text, 1 type is voice
             default_text_channel = channel
             break
     if default_text_channel == None:
@@ -471,7 +467,7 @@ async def get_default_text_channel(server):
 def pop_member_from_voice_room_seek(member):
     global players_seeking_friends
     players_seeking_friends.remove(member)
-    log_msg_to_Discord_pm(member.name + " was removed from players_seeking_friends")
 
 
-bot.run(initialize_bot_token())
+if __name__ == "__main__":
+    bot.run(initialize_bot_token())
