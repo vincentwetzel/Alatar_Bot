@@ -95,7 +95,7 @@ async def on_member_update(before, after):
                                                              bot.get_channel('335188428780208130'))  # Ian's Sex Dungeon
 
                 event_loop = asyncio.get_event_loop()
-                event_loop.call_later(10.0, pop_member_from_voice_room_seek, after)
+                event_loop.call_later(300.0, pop_member_from_voice_room_seek, after)
 
     elif before.nick != after.nick:
         if after.nick is None:
