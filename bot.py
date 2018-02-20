@@ -78,8 +78,6 @@ async def on_member_update(before, after):
                 players_seeking_friends.append(after)  # <----------------- can I remove this and do it in the loop?
                 for member in players_seeking_friends:
                     if member != after and member.game == after.game and member.server == after.server:
-                        await log_msg_to_Discord_pm(
-                            member.name + " has met the criteria for being in the same game as " + after.name)
                         members_in_same_game.append(member)
 
                 # If there are more than 1 players in a game, activate voice room controls
