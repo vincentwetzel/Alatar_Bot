@@ -420,7 +420,9 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
                                    + str(members_in_same_game[0].game)
                                    + ". Here's a voice room you can join your friends in: https://discord.gg/"
                                    + inv.code, tts=True)
-            await log_msg_to_Discord_pm(str(member.name) + " was INVITED to " + str(channel.name))
+            msg = str(member.name) + " was INVITED to " + str(channel.name)
+            await log_msg_to_Discord_pm(msg)
+            await log_user_activity_to_file(str(member.name), msg)
         else:
             await bot.move_member(member, channel)
             await bot.send_message(member, "Greetings " + str(member.name)
@@ -428,7 +430,9 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
                                    + ", I have moved you to a more appropriate"
                                    + " voice room so you can join your friends.",
                                    tts=True)
-            await log_msg_to_Discord_pm(str(member.name) + " was MOVED to " + str(channel.name))
+            msg = str(member.name) + " was MOVED to " + str(channel.name)
+            await log_msg_to_Discord_pm(msg)
+            await log_user_activity_to_file(str(member.name), msg)
 
 
 def initialize_bot_token():
