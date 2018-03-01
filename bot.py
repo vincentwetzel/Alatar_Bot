@@ -1,5 +1,4 @@
-# v1.08
-
+# v1.09
 
 import discord
 from discord.ext import commands
@@ -17,7 +16,7 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 # Initialize Bot settings
-description = '''This is Vincent's Discord Bot.'''
+description = '''This is Vincent's Discord Bot. Use the !command syntax to send a command to the bot.'''
 bot = commands.Bot(command_prefix='!', description=description)
 
 # Globals
@@ -377,6 +376,17 @@ async def printseeking(context):
         await log_msg_to_Discord_pm(msg, False)
 
 
+@bot.command(pass_context=True)
+async def time(context):
+    """
+    The bot sends you a PM with the current time and date.
+    :param context:
+    :return:
+    """
+    await bot.send_message(context.message.author, "Current time is: " + datetime.now().strftime(
+        "%I:%M:%S %p") + " on " + datetime.now().strftime("%A, %B %d, %Y"))
+
+
 async def pad_message(msg, add_time_and_date=True, dash_count=80):
     if add_time_and_date:
         msg = "\n" + (await add_time_and_date_to_string(msg)) + "\n"
@@ -389,8 +399,8 @@ async def pad_message(msg, add_time_and_date=True, dash_count=80):
 
 
 async def add_time_and_date_to_string(msg):
-    return (msg.ljust(59, ' ') + datetime.now().strftime("%I:%M:%S %p").ljust(13, ' ')
-            + datetime.now().strftime("%m-%d-%y"))
+    return msg.ljust(59, ' ') + datetime.now().strftime("%I:%M:%S %p").ljust(13, ' ') + datetime.now().strftime(
+        "%m-%d-%y")
 
 
 async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
