@@ -1,4 +1,4 @@
-# v1.09
+# v1.10
 
 import discord
 from discord.ext import commands
