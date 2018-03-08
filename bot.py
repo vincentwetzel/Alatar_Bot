@@ -26,16 +26,7 @@ players_seeking_friends = []
 
 @bot.event
 async def on_ready():
-    users_to_ignore_file = "users_to_ignore.txt"
-    global users_to_ignore
-    if os.path.exists(users_to_ignore_file):
-        with open(users_to_ignore_file, 'r') as f:  # 'r' is reading mode, stream positioned at start of file
-            for line in f:
-                line = line.strip('\n')
-                users_to_ignore.append(line)
-    else:
-        file = open(users_to_ignore_file, "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
-        file.close()
+    pass
 
 
 @bot.event
