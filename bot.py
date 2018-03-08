@@ -5,7 +5,6 @@ from discord.ext import commands
 from datetime import datetime
 import os.path
 import logging
-from bisect import bisect
 import asyncio
 
 # logging
@@ -16,21 +15,17 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 # Initialize Bot settings
-description = '''This is Vincent's Discord Bot. Use the !command syntax to send a command to the bot.'''
+description = '''This is Vincent's Discord Bot.'''
 bot = commands.Bot(command_prefix='!', description=description)
 
 # Globals
 alertsOn = True
 messages_waiting_to_send = []
-users_to_ignore = []
 players_seeking_friends = []
 
 
 @bot.event
 async def on_ready():
-    msg = await pad_message("AlatarBot is now online!") + "\n"
-    await log_msg_to_Discord_pm(msg, False)
-
     users_to_ignore_file = "users_to_ignore.txt"
     global users_to_ignore
     if os.path.exists(users_to_ignore_file):
@@ -121,10 +116,6 @@ async def on_member_update(before, after):
 
     await log_user_activity_to_file(str(before.name), msg)
 
-    global users_to_ignore
-    if str(after.name) not in users_to_ignore:
-        await log_msg_to_Discord_pm(msg)
-
 
 @bot.event
 async def on_member_ban(member: discord.Member):
@@ -141,7 +132,6 @@ async def on_member_join(member):
                            tts=True)
 
     msg = member.name + " has joined " + str(member.server.name) + "!"
-    await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
     pleb_role = discord.utils.get(member.server.roles, name="Plebs")
@@ -155,7 +145,6 @@ async def on_member_remove(member: discord.Member):
     msg = str(member.name) + " has left " + str(member.server) + "."
 
     await bot.send_message(await get_default_text_channel(member.server), msg)
-    await log_msg_to_Discord_pm(msg)
     await log_user_activity_to_file(str(member.name), msg)
 
 
@@ -165,7 +154,7 @@ async def on_voice_state_update(before: discord.Member, after: discord.Member):
         msg = before.name + " joined voice channel: ".ljust(25, ' ') + str(after.voice.voice_channel)
     else:
         msg = before.name + " left voice channel: ".ljust(25, ' ') + str(before.voice.voice_channel)
-    await log_msg_to_Discord_pm(msg)
+    await log_user_activity_to_file(after.name, msg)
 
 
 @bot.event
@@ -173,7 +162,6 @@ async def on_channel_create(channel: discord.Channel):
     if not channel.is_private:
         msg = "A new " + str(channel.type) + " channel named \"" + str(channel.name) + "\" has been created."
         await bot.send_message(await get_default_text_channel(channel.server), msg, tts=True)
-        await log_msg_to_Discord_pm(msg)
 
 
 @bot.event
@@ -181,108 +169,6 @@ async def on_channel_delete(channel: discord.Channel):
     await bot.send_message(await get_default_text_channel(channel.server),
                            "The " + str(channel.type) + " channel \"" + str(channel.name) + "\" has been deleted.",
                            tts=True)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def on(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global alertsOn
-    alertsOn = True
-    await log_msg_to_Discord_pm("Notifications are ON")
-
-    # Catch up on notifications waiting to be sent.
-    global messages_waiting_to_send
-    if messages_waiting_to_send:
-        await log_msg_to_Discord_pm(await pad_message("Suppressed Notifications", False), False)
-        while messages_waiting_to_send:
-            msg = messages_waiting_to_send.pop(0)  # pop from FRONT of list
-            await log_msg_to_Discord_pm(msg, False)
-        await  log_msg_to_Discord_pm(await pad_message("End", False), False)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def off(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global alertsOn
-    alertsOn = True
-    await log_msg_to_Discord_pm("Notifications are OFF")
-    alertsOn = False
-
-
-@bot.command(pass_context=True, hidden=True)
-async def ignore(context, user_to_ignore):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global users_to_ignore
-    if user_to_ignore in users_to_ignore:
-        await log_msg_to_Discord_pm(user_to_ignore + " is already being ignored.")
-
-    # If user is not in any of the bot's servers, ignore the ignore command
-    user_found = False
-    for server in bot.servers:
-        for member in server.members:
-            if member.name == user_to_ignore:
-                user_found = True
-                break
-        if user_found:
-            break
-
-    if not user_found:
-        await log_msg_to_Discord_pm(user_to_ignore + " could not be found.")
-        return
-
-    users_to_ignore.insert(bisect([i.lower() for i in users_to_ignore], user_to_ignore.lower()), user_to_ignore)
-
-    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
-        for user in users_to_ignore:
-            f.write(user + '\n')
-    # f.close() # Do not need this line because file was opened using "with"
-    await log_msg_to_Discord_pm(user_to_ignore + " has been ignored.")
-    await print_ignored(context)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def unignore(context, user_to_unignore):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    # If they are not being ignored, disregard the command
-    global users_to_ignore
-    if user_to_unignore not in users_to_ignore:
-        await log_msg_to_Discord_pm(user_to_unignore + " is not currently being ignored.")
-        return
-
-    users_to_ignore.remove(user_to_unignore)
-    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
-        for user in users_to_ignore:
-            f.write(user + '\n')
-    # f.close()  # Do not need this line because file was opened using "with"
-    await print_ignored(context)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def unignoreall(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global users_to_ignore
-    users_to_ignore.clear()
-    users_to_ignore_file = "users_to_ignore.txt"
-
-    # Write a new file
-    file = open(users_to_ignore_file, "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
-    file.close()
-    await log_msg_to_Discord_pm("Ignore list has been cleared.")
 
 
 @bot.command(pass_context=True)
@@ -300,80 +186,6 @@ async def invite(context, member_to_invite: discord.Member):
 
     msg = "You have invited " + str(member_to_invite.name) + " to the voice room " + str(voice_room.name)
     await bot.send_message(author, msg, tts=False)
-
-    msg = str(author.name) + " has invited " + str(member_to_invite.name) + " to the voice room " + str(voice_room.name)
-    await log_msg_to_Discord_pm(msg)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def printignored(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    await print_ignored(context)
-
-
-async def print_ignored(context):
-    """Admin method"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global users_to_ignore
-
-    if not users_to_ignore:
-        await log_msg_to_Discord_pm("There are currently no members being ignored.", False)
-    else:
-        msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
-        for user in users_to_ignore:
-            msg = msg + user + '\n'
-        msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-        await log_msg_to_Discord_pm(msg, False)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def printnotignored(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    await print_not_ignored(context)
-
-
-async def print_not_ignored(context):
-    """Admin method"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global users_to_ignore
-
-    msg = await pad_message("Users Not Ignored", add_time_and_date=False) + "\n"
-    users_not_ignored = list()
-    for server in bot.servers:
-        for member in server.members:
-            if member.name not in users_to_ignore and member.name not in users_not_ignored:
-                users_not_ignored.append(member.name)
-    for user in users_not_ignored:
-        msg = msg + user + '\n'
-    msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-    await log_msg_to_Discord_pm(msg, False)
-
-
-@bot.command(pass_context=True, hidden=True)
-async def printseeking(context):
-    """Admin command"""
-    if context.message.author.id != "251934924196675595":
-        return
-
-    global players_seeking_friends
-    if not players_seeking_friends:
-        await log_msg_to_Discord_pm("No members are currently seeking friends.")
-    else:
-        msg = await pad_message("Players Seeking Friends", add_time_and_date=False) + "\n"
-        for player in players_seeking_friends:
-            msg = msg + player.name + "\n"
-        msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-        await log_msg_to_Discord_pm(msg, False)
 
 
 @bot.command(pass_context=True)
@@ -403,16 +215,6 @@ async def add_time_and_date_to_string(msg):
         "%m-%d-%y")
 
 
-async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
-    msg = await add_time_and_date_to_string(msg) if (add_time_and_date is True) else msg
-    global alertsOn
-    if alertsOn:
-        await bot.send_message(await bot.get_user_info('251934924196675595'), msg, tts=True)
-    else:
-        global messages_waiting_to_send
-        messages_waiting_to_send.append(msg)
-
-
 async def log_user_activity_to_file(name, msg):
     msg = await add_time_and_date_to_string(msg)
     filepath = "logs/" + name + ".txt"
@@ -431,7 +233,6 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
                                    + ". Here's a voice room you can join your friends in: https://discord.gg/"
                                    + inv.code, tts=True)
             msg = str(member.name) + " was INVITED to " + str(channel.name)
-            await log_msg_to_Discord_pm(msg)
             await log_user_activity_to_file(str(member.name), msg)
         else:
             await bot.move_member(member, channel)
@@ -441,7 +242,6 @@ async def invite_member_to_voice_channel(members_in_same_game, channel):
                                    + " voice room so you can join your friends.",
                                    tts=True)
             msg = str(member.name) + " was MOVED to " + str(channel.name)
-            await log_msg_to_Discord_pm(msg)
             await log_user_activity_to_file(str(member.name), msg)
 
 
