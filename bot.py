@@ -169,7 +169,7 @@ async def on_voice_state_update(before: discord.Member, after: discord.Member):
 
 
 @bot.event
-async def on_channel_create(channel: discord.Channel):
+async def on_channel_create(channel):
     if not channel.is_private:
         msg = "A new " + str(channel.type) + " channel named \"" + str(channel.name) + "\" has been created."
         await bot.send_message(await get_default_text_channel(channel.server), msg, tts=True)
@@ -177,7 +177,7 @@ async def on_channel_create(channel: discord.Channel):
 
 
 @bot.event
-async def on_channel_delete(channel: discord.Channel):
+async def on_channel_delete(channel):
     await bot.send_message(await get_default_text_channel(channel.server),
                            "The " + str(channel.type) + " channel \"" + str(channel.name) + "\" has been deleted.",
                            tts=True)
@@ -407,7 +407,7 @@ async def log_msg_to_Discord_pm(msg, add_time_and_date=True):
     msg = await add_time_and_date_to_string(msg) if (add_time_and_date is True) else msg
     global alertsOn
     if alertsOn:
-        await bot.send_message(await bot.get_user_info('251934924196675595'), msg, tts=True)
+        await bot.send(await bot.get_user_info('251934924196675595'), msg, tts=True)
     else:
         global messages_waiting_to_send
         messages_waiting_to_send.append(msg)
