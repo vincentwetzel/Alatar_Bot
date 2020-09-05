@@ -1,28 +1,20 @@
-# TODO: Eliminate all send_message
-# TODO: Make the whole damn thing OOP
-# TODO: DOCUMENT THIS BITCH
 # TODO: verify voice room invites are working
-# TODO: Take out stuff from Mike Pence's Electrocution Dungeon
-# TODO: Add annotations for everything
-# TODO: Move welcome message to 'welcome' channel instead of 'general'
-# TODO: verify all str casts and make sure they are needed.
 # TODO: Do a MASSIVE update on Event References.
 #       https://discordpy.readthedocs.io/en/latest/api.html#utility-functions
 # TODO: Make sure that annotations correctly specify between discord.User and discord.Member
-# TODO: Make sure all """Admin Command""" BS has been removed.
-# TODO: Purge all mentions of "server" and replace with "guild"
-# TODO: Add functionality to determine the bot admin at startup. Store this info in a log txt rather than in the script itself.
+
 
 import discord
-from discord.ext import commands
-from datetime import datetime
-import os.path
-import logging
-from bisect import bisect
 import asyncio
+import logging
+from datetime import datetime
+from discord.ext import commands
+import os.path
+from bisect import bisect  # Allows list insertion while maintaining order
 from typing import List
+from collections import deque
 
-# logging
+# logging globals init
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -35,17 +27,17 @@ bot = commands.Bot(command_prefix='!', description=description)
 
 # Globals
 alertsOn = True
-messages_waiting_to_send = []  # TODO: Optimize this by making it a deque, not a list
+messages_waiting_to_send = deque()
 member_names_to_ignore: List[str] = list()
-players_seeking_playmates: List[discord.Member] = list()
-admin_discord_id = 251934924196675595
-MEMBERS_TO_IGNORE_FILE = "users_to_ignore.txt"
+members_seeking_playmates: List[discord.Member] = list()  # TODO: Make this a dictionary and sort by activity
+ADMIN_DISCORD_ID = 251934924196675595  # TODO: Create code for prompting for the admin user's discord ID.
+MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
 
 
 @bot.event
 async def on_ready():
     msg = await pad_message("AlatarBot is now online!") + "\n"
-    await log_msg_to_Discord_pm(msg, False)
+    await log_msg_to_server_owner(msg, False)
 
     global member_names_to_ignore
     if os.path.exists(MEMBERS_TO_IGNORE_FILE):
@@ -59,11 +51,22 @@ async def on_ready():
 
 
 @bot.event
-async def on_message(message: discord.Message):
+async def on_socket_raw_receive(msg) -> None:
+    """
+    Logs whenever a socket receives raw content.
+    :param msg: The information received by the socket
+    :return: None
+    """
+    # logging.debug(msg)  # Comment this line out during normal operations
+    pass
+
+
+@bot.event
+async def on_message(message: discord.Message) -> None:
     """
     This runs when the bot detects a new message.
-    :param message:
-    :return:
+    :param message: The Message that the bot has detected.
+    :return: None
     """
     # we do not want the bot to reply to itself
     if message.author == bot.user:
@@ -74,46 +77,48 @@ async def on_message(message: discord.Message):
 
 
 @bot.event
-async def on_member_update(before: discord.Member, after: discord.Member):
-    # TODO: This method is throwing an error when new members join. Figure out why and fix it.
-    # Process sneaky offline mode status changes
-    if str(before.status) == "offline" and str(after.status) == "offline":
-        msg = str(before.name) + " is in OFFLINE MODE."
+async def on_member_update(before: discord.Member, after: discord.Member) -> None:
+    """
+    Handle Member status updates
+    :param before: The Member before the status change.
+    :param after: The Member after the status change
+    :return: None
+    """
 
     # Process status changes
-    elif before.status != after.status:
+    if before.status != after.status:
         msg = (((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44, ' ')
-               + "(was " + str(before.status).upper() + ")")
+               + "\t(was " + str(before.status).upper() + ")")
 
     # Process activity changes
-    elif before.activity != after.activity:
+    elif before.activity != after.activity or before.activities != after.activities:
         if after.activity is None:
-            msg = str(before.name + " STOPPED playing: ").ljust(35, ' ') + before.activity.name
+            msg = before.name + " STOPPED playing: \t" + before.activity.name
         else:
-            msg = str(before.name + " STARTED playing: ").ljust(35, ' ') + after.activity.name
+            msg = before.name + " STARTED playing: \t" + after.activity.name
 
-            global players_seeking_playmates
-            if after not in players_seeking_playmates:
+            global members_seeking_playmates
+            if after not in members_seeking_playmates:
                 # Voice Room controls
                 members_in_same_game = [after]  # initialize list with one member in it
 
-                players_seeking_playmates.append(after)
-                for member in players_seeking_playmates:
-                    if member != after and member.activity == after.activity and member.server == after.server:
+                members_seeking_playmates.append(after)
+                for member in members_seeking_playmates:
+                    if member != after and member.activity == after.activity and member.guild == after.guild:
                         members_in_same_game.append(member)
 
                 # If there are more than 1 players in a game, activate voice room controls
                 if len(members_in_same_game) > 1:
-                    if str(after.activity.name) == "PLAYERUNKNOWN'S BATTLEGROUNDS" or str(
-                            after.activity.name) == "PUBG":
-                        await invite_member_to_voice_channel(members_in_same_game,
-                                                             bot.get_channel(335193104703291393))  # PUBG Rage-Fest
-                    elif str(after.activity.name) == "League of Legends":
-                        await invite_member_to_voice_channel(members_in_same_game,
-                                                             bot.get_channel(349099177189310475))  # Teemo's Treehouse
+                    if after.activity.name == "PLAYERUNKNOWN'S BATTLEGROUNDS" or after.activity.name == "PUBG":
+                        await invite_members_to_voice_channel(members_in_same_game,
+                                                              "")  # PUBG Rage-Fest
+                    elif after.activity.name == "Notepad++":
+                        await invite_members_to_voice_channel(members_in_same_game,
+                                                              "Teemo's Treehouse")  # Teemo's Treehouse
                     else:
-                        await invite_member_to_voice_channel(members_in_same_game,
-                                                             bot.get_channel(335188428780208130))  # Ian's Sex Dungeon
+                        await invite_members_to_voice_channel(members_in_same_game,
+                                                              discord.utils.get(after.guild.voice_channels,
+                                                                                name="General"))  # Ian's Sex Dungeon
 
                 event_loop = asyncio.get_event_loop()
                 event_loop.call_later(300.0, pop_member_from_voice_room_seek, after)
@@ -121,77 +126,72 @@ async def on_member_update(before: discord.Member, after: discord.Member):
     # Process nickname changes
     elif before.nick != after.nick:
         if after.nick is None:
-            msg = (str(before.nick) + "\'s new nickname is: ").ljust(35, ' ') + str(after.name)
+            msg = (str(before.nick) + "\'s new nickname is: ").ljust(35, ' ') + after.name
         elif before.nick is None:
-            msg = (str(before.name) + "\'s new nickname is: ").ljust(35, ' ') + str(after.nick)
+            msg = (before.name + "\'s new nickname is: ").ljust(35, ' ') + str(after.nick)
         else:
             msg = (str(before.nick) + "\'s new nickname is: ").ljust(35, ' ') + str(after.nick)
 
-    # Process member_name changes
-    elif str(before.name) != str(after.name):
-        msg = str(before.name + "\'s new member_name is: ").ljust(35, ' ') + str(after.name)
+    # Process display_name changes
+    elif before.display_name != after.display_name:
+        msg = (before.name + "\'s new member_name is: ").ljust(35, ' ') + after.name
 
     # Process role changes
     elif before.roles != after.roles:
         new_roles = ""
-        for x in after.roles:
-            if str(x.name) == "@everyone":
+        for role in after.roles:
+            if str(role.name) == "@everyone":
                 continue
             if new_roles == "":
-                new_roles += str(x.name)
+                new_roles += str(role.name)
             else:
-                new_roles += ", " + str(x.name)
+                new_roles += ", " + str(role.name)
 
-        msg = (str(before.name) + "\'s roles are now: ") + (new_roles if new_roles != "" else "None")
-
-    # Process avatar changes
-    elif before.avatar != after.avatar:
-        msg = str(before.name) + " now has a new avatar!"
+        msg = (before.name + "\'s roles are now: ") + (new_roles if new_roles != "" else "None")
 
     # Process errors
     else:
-        msg = "ERROR!!! " + str(after.name) + " has caused an error in on_member_update()."
+        msg = "ERROR!!! " + after.name + " has caused an error in on_member_update()."
 
+    # Log the changes
     await log_user_activity_to_file(str(before.name), msg)
-
-    global member_names_to_ignore
     if after.name not in member_names_to_ignore:
-        await log_msg_to_Discord_pm(msg)
+        await log_msg_to_server_owner(msg)
 
 
 @bot.event
 async def on_member_join(member: discord.Member) -> None:
     """
     Welcomes new members, assigns them the Pleb role.
-    :param member: The new member
+    :param member: The new Member
     :return: None
     """
-    await (await get_default_text_channel(member.guild)).send(
+    await (await get_text_channel(member.guild, "welcome")).send(
         "Welcome " + member.display_name + " to " + member.guild.name + "!", tts=True)
 
     msg: str = member.display_name + " has joined " + member.guild.name + "!"
-    await log_msg_to_Discord_pm(msg)
+    await log_msg_to_server_owner(msg)
     await log_user_activity_to_file(member.display_name, msg)
 
     pleb_role: discord.Role = discord.utils.get(member.guild.roles, name="Plebs")
     if pleb_role is None:
         pleb_role = await member.guild.create_role(name="Plebs", hoist=True, mentionable=True,
                                                    reason="Pleb role for the plebs")
-        await log_msg_to_Discord_pm("The Pleb role did not exist, so the bot has created it.")
+        await log_msg_to_server_owner("The Pleb role did not exist, so the bot has created it.")
     await member.add_roles(pleb_role)
 
 
 @bot.event
 async def on_member_remove(member: discord.Member) -> None:
     """
-    Event for when a member is removed from the Guild.
-    :param member:
-    :return:
+    Event for when a Member is removed from the Guild.
+    :param member: The Member who has been removed
+    :return: None
     """
-    msg = str(member.display_name) + " has left " + str(member.guild) + "."
+    msg = member.display_name + " has left " + str(member.guild) + "."
 
-    await (await get_default_text_channel(member.guild)).send(msg)
-    await log_msg_to_Discord_pm(msg)
+    await (await get_text_channel(member.guild, "welcome")).send(msg)
+    await log_msg_to_server_owner(msg)
     await log_user_activity_to_file(member.display_name, msg)
 
 
@@ -205,8 +205,8 @@ async def on_member_ban(guild: discord.Guild, member: discord.Member) -> None:
     msg = ("Holy cats, " + str(member.display_name)
            + " just received the full wrath of the ban hammer! Bye bye nerd! Don't come back to "
            + str(member.guild) + "!")
-    await (await get_default_text_channel(member.guild)).send(msg, tts=True)
-    await log_msg_to_Discord_pm(msg)
+    await (await get_text_channel(member.guild, "welcome")).send(msg, tts=True)
+    await log_msg_to_server_owner(msg)
     await log_user_activity_to_file(member.display_name, msg)
 
 
@@ -216,7 +216,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         msg = member.display_name + " joined voice channel: ".ljust(25, ' ') + after.channel.name
     else:
         msg = member.display_name + " left voice channel: ".ljust(25, ' ') + before.channel.name
-    await log_msg_to_Discord_pm(msg)
+    await log_msg_to_server_owner(msg)
     await log_user_activity_to_file(member.display_name, msg)
 
 
@@ -227,9 +227,9 @@ async def on_guild_channel_create(channel: discord.abc.GuildChannel) -> None:
     :param channel: The channel that was created
     :return: None
     """
-    msg: str = "A new " + str(channel.category) + " channel named \"" + str(channel.name) + "\" has been created."
-    await (await get_default_text_channel(channel.guild)).send(msg)
-    await log_msg_to_Discord_pm(msg)
+    msg: str = "A new channel named \"" + channel.name + "\" has been created."
+    await (await get_text_channel(channel.guild, "general")).send(msg)
+    await log_msg_to_server_owner(msg)
 
 
 @bot.event
@@ -239,51 +239,48 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
     :param channel: The channel that was deleted
     :return: None
     """
-    msg: str = "The " + str(channel.category) + " channel \"" + str(channel.name) + "\" has been deleted."
-    await (await get_default_text_channel(channel.guild)).send(msg)
-    await log_msg_to_Discord_pm(msg)
+    msg: str = "The channel \"" + channel.name + "\" has been deleted."
+    await (await get_text_channel(channel.guild, "general")).send(msg)
+    await log_msg_to_server_owner(msg)
 
 
 @bot.command(hidden=True)
 async def on(context: discord.ext.commands.Context) -> None:
     """
     Turns logging on
-    :param context:
-    :return:
+    :param context: The Context of the command
+    :return: None
     """
-    # TODO: Remove globals, make OOP
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global alertsOn
     alertsOn = True
-    await log_msg_to_Discord_pm("Notifications are ON")
+    await log_msg_to_server_owner("Notifications are ON")
 
     # Catch up on notifications waiting to be sent.
     global messages_waiting_to_send
     if messages_waiting_to_send:
-        await log_msg_to_Discord_pm(await pad_message("Suppressed Notifications", False), False)
+        await log_msg_to_server_owner(await pad_message("Suppressed Notifications", False), False)
         while messages_waiting_to_send:
-            msg = messages_waiting_to_send.pop(0)  # pop from FRONT of list
-            await log_msg_to_Discord_pm(msg, False)
-        await log_msg_to_Discord_pm(await pad_message("End", False), False)
+            msg = messages_waiting_to_send.popleft()  # pop from FRONT of list
+            await log_msg_to_server_owner(msg, False)
+        await log_msg_to_server_owner(await pad_message("End", False), False)
 
 
 @bot.command(hidden=True)
 async def off(context: discord.ext.commands.Context) -> None:
     """
     Turns logging OFF
-    :param context: Context
+    :param context: The context of the command
     :return: None
     """
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global alertsOn
     alertsOn = True
-    await log_msg_to_Discord_pm("Notifications are OFF")
+    await log_msg_to_server_owner("Notifications are OFF")
     alertsOn = False
 
 
@@ -291,24 +288,22 @@ async def off(context: discord.ext.commands.Context) -> None:
 async def ignore(context: discord.ext.commands.Context, member_name_to_ignore: str) -> None:
     """
     Ignores a user from activity logging.
-    :param context: The context.
+    :param context: The context of the command.
     :param member_name_to_ignore: The name of the Member to ignore.
     :return: None
     """
-    # TODO: Make OOP
 
     # Only allow the admin to use this command
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
     # Search to see if the member is already being ignored
     global member_names_to_ignore
     if member_name_to_ignore in member_names_to_ignore:
-        await log_msg_to_Discord_pm(member_name_to_ignore + " is already being ignored.")
+        await log_msg_to_server_owner(member_name_to_ignore + " is already being ignored.")
         return
 
-    # If user is not in any of the bot's servers, ignore the ignore command
+    # If user is not in any of the bot's guilds, ignore the ignore command
     member_found = False
     for guild in bot.guilds:
         for member in guild.members:
@@ -320,7 +315,7 @@ async def ignore(context: discord.ext.commands.Context, member_name_to_ignore: s
 
     # If the member is not found, return.
     if not member_found:
-        await log_msg_to_Discord_pm(member_name_to_ignore + " could not be found.")
+        await log_msg_to_server_owner(member_name_to_ignore + " could not be found.")
         return
 
     # Add the Member's name to our running list
@@ -329,12 +324,12 @@ async def ignore(context: discord.ext.commands.Context, member_name_to_ignore: s
         member_name_to_ignore)
 
     # Add the Member's name to our persistent file
-    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
+    with open("members_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
         for user in member_names_to_ignore:
             f.write(user + '\n')
 
     # Log the results
-    await log_msg_to_Discord_pm(member_name_to_ignore + " has been ignored.")
+    await log_msg_to_server_owner(member_name_to_ignore + " has been ignored.")
     await printignored(context)
 
 
@@ -343,65 +338,60 @@ async def unignore(context: discord.ext.commands.Context, member_name_to_unignor
     """
     Removes a Member from the ignore list
     :param context: The context
-    :param member_name_to_unignore: The member's name
+    :param member_name_to_unignore: The Member's name
     :return: None
     """
-    # TODO: Make OOP
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
     # If they are not being ignored, disregard the command
     global member_names_to_ignore
     if member_name_to_unignore not in member_names_to_ignore:
-        await log_msg_to_Discord_pm(member_name_to_unignore + " is not currently being ignored.")
+        await log_msg_to_server_owner(member_name_to_unignore + " is not currently being ignored.")
         return
 
     # Remove the Member from the ignore list
     member_names_to_ignore.remove(member_name_to_unignore)
-    with open("users_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
+    with open("members_to_ignore.txt", 'w') as f:  # 'w' opens for writing, creates if doesn't exist
         for user in member_names_to_ignore:
             f.write(user + '\n')
-    await log_msg_to_Discord_pm(member_name_to_unignore + " is no longer being ignored.")
+    await log_msg_to_server_owner(member_name_to_unignore + " is no longer being ignored.")
     await printignored(context)
 
 
 @bot.command(hidden=True)
-async def unignoreall(context: discord.ext.commands.Context):
+async def unignoreall(context: discord.ext.commands.Context) -> None:
     """
-
-    :param context:
-    :return:
+    Removes all users from the ignore list.
+    :param context: The Context of the command.
+    :return: None
     """
-    # TODO: Update documentation
-    # TODO: Make OOP
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global member_names_to_ignore
     member_names_to_ignore.clear()
-    users_to_ignore_file = "users_to_ignore.txt"
+    users_to_ignore_file = "members_to_ignore.txt"
 
     # Write a new file
     file = open(users_to_ignore_file, "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
     file.close()
-    await log_msg_to_Discord_pm("Ignore list has been cleared.")
+    await log_msg_to_server_owner("Ignore list has been cleared.")
 
 
 @bot.command()
-async def invite(context: discord.ext.commands.Context, member_to_invite: discord.Member):
+async def invite(context: discord.ext.commands.Context, member_to_invite: discord.Member) -> None:
     """
     !invite username - invites a user to your current voice room.
     :param context: The current context
     :param member_to_invite: The user to invite to your current voice room.
-    :return:
+    :return: None
     """
     author: discord.Member = context.message.author
 
     # Check the VoiceState to see if the command's author is in a voice room
     if author.voice is None:
-        await log_msg_to_Discord_pm(
+        await log_msg_to_server_owner(
             author.display_name + " attempted to use an !invite command but they are not in a voice room.")
         return
 
@@ -417,7 +407,7 @@ async def invite(context: discord.ext.commands.Context, member_to_invite: discor
         "You have invited " + member_to_invite.name + " to the voice room " + voice_channel.name + " in " + author.guild.name,
         tts=False)
 
-    await log_msg_to_Discord_pm(
+    await log_msg_to_server_owner(
         author.display_name + " has invited " + member_to_invite.display_name + " to the voice room " + voice_channel.name)
 
 
@@ -425,38 +415,32 @@ async def invite(context: discord.ext.commands.Context, member_to_invite: discor
 async def printignored(context) -> None:
     """
     Prints a list of the users currently being ignored
-    :param context: The context
+    :param context: The context of the command
     :return: None
     """
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
-    global member_names_to_ignore
-
     if not member_names_to_ignore:
-        await log_msg_to_Discord_pm("There are currently no members being ignored.", False)
+        await log_msg_to_server_owner("There are currently no members being ignored.", False)
     else:
         msg = await pad_message("Ignored Users", add_time_and_date=False) + "\n"
         for member in member_names_to_ignore:
             msg = msg + member + '\n'
         msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-        await log_msg_to_Discord_pm(msg, False)
+        await log_msg_to_server_owner(msg, False)
 
 
 @bot.command(hidden=True)
 async def printnotignored(context: discord.ext.commands.Context) -> None:
     """
     Prints a list of users not ignored by the bot.
-    :param context:
-    :return:
+    :param context: The context of the command
+    :return: None
     """
     # Only allow this command to be done by the admin
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
-
-    global member_names_to_ignore
 
     msg: str = await pad_message("Users Not Ignored", add_time_and_date=False) + "\n"
     members_not_ignored: List[discord.Member] = list()
@@ -470,7 +454,7 @@ async def printnotignored(context: discord.ext.commands.Context) -> None:
         msg = msg + m.display_name + '\n'
 
     msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-    await log_msg_to_Discord_pm(msg, False)
+    await log_msg_to_server_owner(msg, False)
 
 
 @bot.command(hidden=True)
@@ -480,39 +464,38 @@ async def printseeking(context: discord.ext.commands.Context) -> None:
     :param context: The context.
     :return: None
     """
-    global admin_discord_id
-    if context.message.author.id != admin_discord_id:
+    if context.message.author.id != ADMIN_DISCORD_ID:
         return
 
-    global players_seeking_playmates
-    if not players_seeking_playmates:
-        await log_msg_to_Discord_pm("No members are currently seeking friends to play with.")
+    global members_seeking_playmates
+    if not members_seeking_playmates:
+        await log_msg_to_server_owner("No members are currently seeking friends to play with.")
     else:
         msg = await pad_message("Players Seeking Playmates", add_time_and_date=False) + "\n"
-        for player in players_seeking_playmates:
+        for player in members_seeking_playmates:
             msg = msg + player.name + "\n"
         msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
-        await log_msg_to_Discord_pm(msg, False)
+        await log_msg_to_server_owner(msg, False)
 
 
 @bot.command()
-async def time(context):
+async def time(context) -> None:
     """
     The bot replies with the current time and date.
-    :param context:
-    :return:
+    :param context: The Context of the command.
+    :return: None
     """
     await context.send("Current time is: " + datetime.now().strftime(
         "%I:%M:%S %p") + " on " + datetime.now().strftime("%A, %B %d, %Y"))
 
 
-async def pad_message(msg, add_time_and_date=True, dash_count=75):
+async def pad_message(msg, add_time_and_date=True, dash_count=75) -> str:
     """
     Pads a message with stars
     :param msg: The message
     :param add_time_and_date: Adds time and date
     :param dash_count: The number of stars to use in the padding
-    :return:
+    :return: A new string with the original message padded with stars.
     """
     if add_time_and_date:
         msg = "\n" + (await add_time_and_date_to_string(msg)) + "\n"
@@ -529,7 +512,7 @@ async def add_time_and_date_to_string(msg):
 
 
 @bot.command(hidden=True)
-async def log_msg_to_Discord_pm(msg: str, add_time_and_date: bool = True, tts_param=False):
+async def log_msg_to_server_owner(msg: str, add_time_and_date: bool = True, tts_param=False):
     """
     Sends a DM to the bot's owner.
     :param msg: The message to send
@@ -537,12 +520,10 @@ async def log_msg_to_Discord_pm(msg: str, add_time_and_date: bool = True, tts_pa
     :param tts_param: Text-to-speech option
     :return:
     """
-    # TODO: Remove globals, make OOP
     msg = await add_time_and_date_to_string(msg) if (add_time_and_date is True) else msg
     global alertsOn
     if alertsOn:
-        global admin_discord_id
-        await (await bot.fetch_user(admin_discord_id)).send(msg, tts=tts_param)
+        await (await bot.fetch_user(ADMIN_DISCORD_ID)).send(msg, tts=tts_param)
     else:
         global messages_waiting_to_send
         messages_waiting_to_send.append(msg)
@@ -553,7 +534,7 @@ async def log_user_activity_to_file(member_name: str, log_msg: str) -> None:
     Creates/appends to a log file specific for a user.
     :param member_name: The name of the uer being logged
     :param log_msg: The information to be logged
-    :return:
+    :return: None
     """
     log_msg = await add_time_and_date_to_string(log_msg)
     filepath = "logs/" + member_name + ".txt"
@@ -561,34 +542,63 @@ async def log_user_activity_to_file(member_name: str, log_msg: str) -> None:
         file.write(log_msg + "\n")
 
 
-async def invite_member_to_voice_channel(members_in_same_game: List[discord.Member],
-                                         voice_channel: discord.VoiceChannel):
-    invite = await (bot.create_invite(voice_channel, max_age=3600))
+async def invite_members_to_voice_channel(members_in_same_game: List[discord.Member], voice_channel_name: str) -> None:
+    """
+    Invites a list of Members to a voice channel.
+    :param members_in_same_game: The list of Members to invite
+    :param voice_channel_name:  The Voice Channel to invite the Members to.
+    :return: None
+    """
+    voice_channel = discord.utils.get(members_in_same_game[0].guild.voice_channels, name=voice_channel_name)
+    if voice_channel is None:
+        cat = discord.utils.get(members_in_same_game[0].guild.categories, name="VOICE CHANNELS")
+        if cat is None:
+            cat = await members_in_same_game[0].guild.create_category("VOICE CHANNELS", overwrites=None,
+                                                                      reason="Category did not exist")
+            await log_msg_to_server_owner("Category did not exist and has been created")
+        else:
+            await log_msg_to_server_owner("Category already existed.")
+        voice_channel = await members_in_same_game[0].guild.create_voice_channel(voice_channel_name,
+                                                                                 bitrate=64000,
+                                                                                 user_limit=10,
+                                                                                 overwrites=None,
+                                                                                 category=cat,
+                                                                                 reason="Voice Channel did not exist but was requested by 2+ players playing the same game."
+                                                                                 )
+
+    invite = await (voice_channel.create_invite(
+        reason="multiple members are in the same game so the bot is inviting them to the same voice room",
+        max_age=3600))
+
     for member in members_in_same_game:
-        if member.voice.voice_channel == voice_channel:
+        if member.voice and member.voice.channel == voice_channel:
             continue
-        elif member.voice.voice_channel is None:  # is NOT in voice voice_channel
+        elif member.voice is None:  # is NOT in voice voice_channel
             await member.send("You are not the only person playing "
-                              + str(members_in_same_game[0].activity)
+                              + members_in_same_game[0].activity.name
                               + ". Here's a voice room you can join your friends in: https://discord.gg/"
                               + invite.code, tts=True)
-            msg = str(member.display_name) + " was INVITED to " + str(voice_channel.name)
-            await log_msg_to_Discord_pm(msg)
-            await log_user_activity_to_file(str(member.display_name), msg)
+            msg = member.display_name + " was INVITED to " + voice_channel.name
+            await log_msg_to_server_owner(msg)
+            await log_user_activity_to_file(member.display_name, msg)
         else:
-            await bot.move_member(member, voice_channel)
-            await member.send("Greetings " + str(member.display_name)
+            await member.move_to(voice_channel)
+            await member.send("Greetings " + member.display_name
                               + "! Due to the fact that you are currently playing " + str(member.activity.name)
                               + ", I have moved you to a more appropriate"
                               + " voice room so you can join your friends.",
                               tts=True)
-            msg = str(member.display_name) + " was MOVED to " + str(voice_channel.name)
-            await log_msg_to_Discord_pm(msg)
-            await log_user_activity_to_file(str(member.display_name), msg)
+            msg = member.display_name + " was MOVED to " + voice_channel.name
+            await log_msg_to_server_owner(msg)
+            await log_user_activity_to_file(member.display_name, msg)
 
 
-def initialize_bot_token():
-    token_file = "token.txt"
+def init_bot_token(token_file: str) -> str:
+    """
+    Gets the bot's token from a file
+    :param token_file: The token file from which to get the bot's token number.
+    :return: The bot's token as a string.
+    """
     if not os.path.exists(token_file):
         with open(token_file, 'a') as f:  # 'a' opens for appending without truncating
             token = input("The token file does not exist. Please enter the bot's token: ")
@@ -604,24 +614,37 @@ def initialize_bot_token():
     return token
 
 
-async def get_default_text_channel(guild: discord.Guild) -> discord.TextChannel:
+async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
+    """
+    Gets the text channel requested, creates if the channel does not exist.
+    :param guild: The Guild for this request
+    :param channel_name: The channel to be fetched or created
+    :return: The Text Channel object
+    """
     default_text_channel = None
     idx = 0
 
     # Find the channel if it exists
     for channel in list(guild.text_channels):
-        if channel.name == "general":
+        if channel.name == channel_name:
             return channel
 
     # If no general channel exists, create one.
-    return await guild.create_text_channel("general", reason="Default text channel")
+    return await guild.create_text_channel(channel_name, reason="Default text channel")
 
 
-def pop_member_from_voice_room_seek(member):
-    # TODO: Is this the best way of doing this???
-    global players_seeking_playmates
-    players_seeking_playmates.remove(member)
+def pop_member_from_voice_room_seek(member) -> None:
+    """
+    This is a helper method used by event_loop.call_after()
+
+    NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
+    List modification would be a statement which is why we can't do this via a lambda.
+    :param member: The member to pop from the list
+    :return: None
+    """
+    global members_seeking_playmates
+    members_seeking_playmates.remove(member)
 
 
 if __name__ == "__main__":
-    bot.run(initialize_bot_token())
+    bot.run(init_bot_token("token.txt"))
