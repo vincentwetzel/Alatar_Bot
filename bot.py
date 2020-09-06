@@ -1,15 +1,14 @@
-# TODO: Implement Twitter stuff
-# TODO: Create /logs directory if it doesn't exist when the user first runs this bot.
-
 import discord
+from discord.ext import commands
 import asyncio
+
 import logging
 from datetime import datetime
-from discord.ext import commands
+
 import os.path
 from bisect import bisect  # Allows list insertion while maintaining order
-from typing import List
-from collections import deque
+from typing import List, DefaultDict
+from collections import deque, defaultdict
 
 # logging globals init
 logger = logging.getLogger('discord')
@@ -26,7 +25,7 @@ bot = commands.Bot(command_prefix='!', description=description)
 alertsOn = True
 messages_waiting_to_send = deque()
 member_names_to_ignore: List[str] = list()
-members_seeking_playmates: List[discord.Member] = list()  # TODO: Make this a dictionary and sort by activity
+members_seeking_playmates: DefaultDict[str, list] = defaultdict(list)
 MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
 ADMIN_DISCORD_ID = None
 
@@ -97,31 +96,34 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
         else:
             msg = before.name + " STARTED playing: \t" + after.activity.name
 
+            # Figure out if the activity change should trigger the bot to take action regarding Voice Rooms
             global members_seeking_playmates
-            if after not in members_seeking_playmates:
-                # Voice Room controls
-                members_in_same_game = [after]  # initialize list with one member in it
+            if after not in members_seeking_playmates[after.activity]:
+                # initialize a list with one member in it
+                members_in_same_game = [after]
 
-                members_seeking_playmates.append(after)
-                for member in members_seeking_playmates:
+                # Make a list of other members in this same game
+                members_seeking_playmates[after.activity].append(after)
+                for member in list(members_seeking_playmates[after.activity]):
                     if member != after and member.activity == after.activity and member.guild == after.guild:
                         members_in_same_game.append(member)
 
-                # If there are more than 1 players in a game, activate voice room controls
+                # If there are more than 1 players in a game, try to get them all in the same room
                 if len(members_in_same_game) > 1:
                     if after.activity.name == "PLAYERUNKNOWN'S BATTLEGROUNDS" or after.activity.name == "PUBG":
-                        await invite_members_to_voice_channel(members_in_same_game,
-                                                              "")  # PUBG Rage-Fest
-                    elif after.activity.name == "Notepad++":
-                        await invite_members_to_voice_channel(members_in_same_game,
-                                                              "Teemo's Treehouse")  # Teemo's Treehouse
+                        await invite_members_to_voice_channel(members_in_same_game, "PUBG Rage-Fest")
+                    elif after.activity.name == "League of Legends":
+                        await invite_members_to_voice_channel(members_in_same_game, "Teemo's Treehouse")
                     else:
-                        await invite_members_to_voice_channel(members_in_same_game,
-                                                              discord.utils.get(after.guild.voice_channels,
-                                                                                name="General"))  # Ian's Sex Dungeon
+                        await invite_members_to_voice_channel(members_in_same_game, "General")
 
                 event_loop = asyncio.get_event_loop()
-                event_loop.call_later(300.0, pop_member_from_voice_room_seek, after)
+                event_loop.call_later(5.0, pop_member_from_voice_room_seek, after, after.activity)
+            for activity in list(members_seeking_playmates.keys()):
+                if after in list(members_seeking_playmates[activity]) and activity != after.activity:
+                    members_seeking_playmates[activity].remove(after)
+                    if not members_seeking_playmates[activity]:
+                        members_seeking_playmates.pop(activity)
 
     # Process nickname changes
     elif before.nick != after.nick:
@@ -228,7 +230,7 @@ async def on_guild_channel_create(channel: discord.abc.GuildChannel) -> None:
     :return: None
     """
     msg: str = "A new channel named \"" + channel.name + "\" has been created."
-    await (await get_text_channel(channel.guild, "general")).send(msg)
+    await (await get_text_channel(channel.guild, "admin")).send(msg)
     await log_msg_to_server_owner(msg)
 
 
@@ -240,7 +242,7 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
     :return: None
     """
     msg: str = "The channel \"" + channel.name + "\" has been deleted."
-    await (await get_text_channel(channel.guild, "general")).send(msg)
+    await (await get_text_channel(channel.guild, "admin")).send(msg)
     await log_msg_to_server_owner(msg)
 
 
@@ -465,6 +467,7 @@ async def printseeking(context: discord.ext.commands.Context) -> None:
     :return: None
     """
     if context.message.author.id != ADMIN_DISCORD_ID:
+        await log_msg_to_server_owner("An unauthorized user attempted to use this command!")
         return
 
     global members_seeking_playmates
@@ -472,9 +475,11 @@ async def printseeking(context: discord.ext.commands.Context) -> None:
         await log_msg_to_server_owner("No members are currently seeking friends to play with.")
     else:
         msg = await pad_message("Players Seeking Playmates", add_time_and_date=False) + "\n"
-        for player in members_seeking_playmates:
-            msg = msg + player.name + "\n"
-        msg = msg + await pad_message("End", add_time_and_date=False) + "\n"
+        for activity in list(members_seeking_playmates.keys()):
+            msg += "\nACTIVITY: " + activity.name + "\n"
+            for member in list(members_seeking_playmates[activity]):
+                msg = msg + member.name + "\n"
+        msg = msg + "\n" + await pad_message("End", add_time_and_date=False) + "\n"
         await log_msg_to_server_owner(msg, False)
 
 
@@ -544,7 +549,8 @@ async def log_user_activity_to_file(member_name: str, log_msg: str) -> None:
         file.write(log_msg + "\n")
 
 
-async def invite_members_to_voice_channel(members_in_same_game: List[discord.Member], voice_channel_name: str) -> None:
+async def invite_members_to_voice_channel(members_in_same_game: List[discord.Member],
+                                          voice_channel_name: str) -> None:
     """
     Invites a list of Members to a voice channel.
     :param members_in_same_game: The list of Members to invite
@@ -553,9 +559,9 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
     """
     voice_channel = discord.utils.get(members_in_same_game[0].guild.voice_channels, name=voice_channel_name)
     if voice_channel is None:
-        cat = discord.utils.get(members_in_same_game[0].guild.categories, name="VOICE CHANNELS")
+        cat = discord.utils.get(members_in_same_game[0].guild.categories, name="Voice Channels")
         if cat is None:
-            cat = await members_in_same_game[0].guild.create_category("VOICE CHANNELS", overwrites=None,
+            cat = await members_in_same_game[0].guild.create_category("Voice Channels", overwrites=None,
                                                                       reason="Category did not exist")
             await log_msg_to_server_owner("Category did not exist and has been created")
         else:
@@ -575,7 +581,7 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
     for member in members_in_same_game:
         if member.voice and member.voice.channel == voice_channel:
             continue
-        elif member.voice is None:  # is NOT in voice voice_channel
+        elif member.voice is None:  # is NOT in voice voice_channel_name
             await member.send("You are not the only person playing "
                               + members_in_same_game[0].activity.name
                               + ". Here's a voice room you can join your friends in: https://discord.gg/"
@@ -637,31 +643,37 @@ async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.T
     :param channel_name: The channel to be fetched or created
     :return: The Text Channel object
     """
-    default_text_channel = None
-    idx = 0
-
     # Find the channel if it exists
     for channel in list(guild.text_channels):
         if channel.name == channel_name:
             return channel
 
-    # If no general channel exists, create one.
-    return await guild.create_text_channel(channel_name, reason="Default text channel")
+    # If no Text Channel with this name exists, create one.
+    return await guild.create_text_channel(channel_name, reason="Text Channel was requested but did not exist.")
 
 
-def pop_member_from_voice_room_seek(member) -> None:
+def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
     """
     This is a helper method used by event_loop.call_after()
 
+    NOTE: This method
+
     NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
     List modification would be a statement which is why we can't do this via a lambda.
-    :param member: The member to pop from the list
+    :param member: The member to remove from voice room seeking
     :return: None
     """
     global members_seeking_playmates
-    members_seeking_playmates.remove(member)
+    if member in members_seeking_playmates[activity]:
+        members_seeking_playmates[activity].remove(member)
+        if not members_seeking_playmates[activity]:
+            members_seeking_playmates.pop(activity)
 
 
 if __name__ == "__main__":
-    ADMIN_DISCORD_ID = init_admin_discord_id("admin_discord_id.txt")
+    try:
+        ADMIN_DISCORD_ID = int(init_admin_discord_id("admin_discord_id.txt"))
+    except TypeError as e:
+        print(e)
+        print("This error means that there is something wrong with your admin_discord_id.txt file.")
     bot.run(init_bot_token("token.txt"))
