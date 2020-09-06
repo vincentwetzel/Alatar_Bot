@@ -1,8 +1,5 @@
-# TODO: verify voice room invites are working
-# TODO: Do a MASSIVE update on Event References.
-#       https://discordpy.readthedocs.io/en/latest/api.html#utility-functions
-# TODO: Make sure that annotations correctly specify between discord.User and discord.Member
-
+# TODO: Implement Twitter stuff
+# TODO: Create /logs directory if it doesn't exist when the user first runs this bot.
 
 import discord
 import asyncio
@@ -30,8 +27,8 @@ alertsOn = True
 messages_waiting_to_send = deque()
 member_names_to_ignore: List[str] = list()
 members_seeking_playmates: List[discord.Member] = list()  # TODO: Make this a dictionary and sort by activity
-ADMIN_DISCORD_ID = 251934924196675595  # TODO: Create code for prompting for the admin user's discord ID.
 MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
+ADMIN_DISCORD_ID = None
 
 
 @bot.event
@@ -40,11 +37,14 @@ async def on_ready():
     await log_msg_to_server_owner(msg, False)
 
     global member_names_to_ignore
+
+    # Initialize member_names_to_ignore
     if os.path.exists(MEMBERS_TO_IGNORE_FILE):
         with open(MEMBERS_TO_IGNORE_FILE, 'r') as f:  # 'r' is reading mode, stream positioned at start of file
             for line in f:
                 member_names_to_ignore.append(line.strip('\n'))
     else:
+        # Create file for later use
         file = open(MEMBERS_TO_IGNORE_FILE,
                     "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
         file.close()
@@ -538,6 +538,8 @@ async def log_user_activity_to_file(member_name: str, log_msg: str) -> None:
     """
     log_msg = await add_time_and_date_to_string(log_msg)
     filepath = "logs/" + member_name + ".txt"
+    if not os.path.isdir("logs"):
+        os.mkdir("logs")
     with open(filepath, "a+", encoding="utf-8") as file:  # "a+" means append mode, create the file if it doesn't exist.
         file.write(log_msg + "\n")
 
@@ -603,15 +605,29 @@ def init_bot_token(token_file: str) -> str:
         with open(token_file, 'a') as f:  # 'a' opens for appending without truncating
             token = input("The token file does not exist. Please enter the bot's token: ")
             f.write(token)
-            # f.close()# Do not need this line because file was opened using "with"
     else:
         with open(token_file, 'r+') as f:  # 'r+' is reading/writing mode, stream positioned at start of file
             token = f.readline().rstrip('\n')  # readline() usually has a \n at the end of it
             if not token:
                 token = input("The token file is empty. Please enter the bot's token: ")
                 f.write(token)
-            # f.close() # Do not need this line because file was opened using "with"
     return token
+
+
+def init_admin_discord_id(id_fname: str) -> str:
+    """
+    Initializes the owner ID so the bot knows who is in charge.
+    :param id_fname: The name of the file that contains the admin's id number
+    :return: The ID of the admin user as a string.
+    """
+    if os.path.isfile("admin_dicord_id.txt"):
+        with open("admin_dicord_id.txt", 'r') as f:
+            return f.readline().strip()
+    else:
+        with open("admin_dicord_id.txt", "w") as f:
+            id = input("Please enter the Discord ID number for the admin you want this bot to report to: ")
+            f.write(id)
+            return id
 
 
 async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
@@ -647,4 +663,5 @@ def pop_member_from_voice_room_seek(member) -> None:
 
 
 if __name__ == "__main__":
+    ADMIN_DISCORD_ID = init_admin_discord_id("admin_discord_id.txt")
     bot.run(init_bot_token("token.txt"))
