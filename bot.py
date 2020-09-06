@@ -620,7 +620,7 @@ def init_bot_token(token_file: str) -> str:
     return token
 
 
-def init_admin_discord_id(id_fname: str) -> str:
+def init_admin_discord_id(id_fname: str) -> int:
     """
     Initializes the owner ID so the bot knows who is in charge.
     :param id_fname: The name of the file that contains the admin's id number
@@ -628,12 +628,19 @@ def init_admin_discord_id(id_fname: str) -> str:
     """
     if os.path.isfile("admin_dicord_id.txt"):
         with open("admin_dicord_id.txt", 'r') as f:
-            return f.readline().strip()
-    else:
-        with open("admin_dicord_id.txt", "w") as f:
-            id = input("Please enter the Discord ID number for the admin you want this bot to report to: ")
-            f.write(id)
-            return id
+            line = f.readline().strip()
+            if line and len(line) == 18:  # Discord IDs are 18 characters.
+                try:
+                    return int(line)
+                except ValueError as e:
+                    print(e)
+                    print("There was an issue with the discord ID found in " + id_fname
+                          + ". This file should only contain an 18-digit number and nothing else")
+
+    with open("admin_dicord_id.txt", "w") as f:
+        id = input("Please enter the Discord ID number for the admin you want this bot to report to: ")
+        f.write(id)
+        return id
 
 
 async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
