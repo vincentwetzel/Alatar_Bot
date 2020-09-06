@@ -1,4 +1,6 @@
 import discord
+import requests
+import json
 from discord.ext import commands
 import asyncio
 
@@ -601,6 +603,58 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
             await log_user_activity_to_file(member.display_name, msg)
 
 
+@bot.command()
+async def insult(context, member_name: str) -> None:
+    """
+    !insult user - Hurls an insult at a targetted user.
+    :param context: The Context of the Command.
+    :param name: The name of the user to insult
+    :return: None
+    """
+    response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json")
+    insult = json.loads(response.text)['insult']
+
+    member = discord.utils.get(context.guild.members, name=member_name)
+    if member:
+        await context.send(member.mention + " " + insult)
+    else:
+        await context.send("That is not a member of this guild. Choose a better target to insult!")
+
+
+async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
+    """
+    Gets the text channel requested, creates if the channel does not exist.
+    :param guild: The Guild for this request
+    :param channel_name: The channel to be fetched or created
+    :return: The Text Channel object
+    """
+    # Find the channel if it exists
+    for channel in list(guild.text_channels):
+        if channel.name == channel_name:
+            return channel
+
+    # If no Text Channel with this name exists, create one.
+    return await guild.create_text_channel(channel_name, reason="Text Channel was requested but did not exist.")
+
+
+def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
+    """
+    This is a helper method used by event_loop.call_after()
+
+    NOTE: This method
+
+    NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
+    List modification would be a statement which is why we can't do this via a lambda.
+    :param member: The member to remove from voice room seeking
+    :return: None
+    """
+    global members_seeking_playmates
+    if member in members_seeking_playmates[activity]:
+        members_seeking_playmates[activity].remove(member)
+        if not members_seeking_playmates[activity]:
+            members_seeking_playmates.pop(activity)
+
+
 def init_bot_token(token_file: str) -> str:
     """
     Gets the bot's token from a file
@@ -644,40 +698,6 @@ def init_admin_discord_id(id_fname: str) -> int:
         id = input("Please enter the Discord ID number for the admin you want this bot to report to: ")
         f.write(id)
         return id
-
-
-async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
-    """
-    Gets the text channel requested, creates if the channel does not exist.
-    :param guild: The Guild for this request
-    :param channel_name: The channel to be fetched or created
-    :return: The Text Channel object
-    """
-    # Find the channel if it exists
-    for channel in list(guild.text_channels):
-        if channel.name == channel_name:
-            return channel
-
-    # If no Text Channel with this name exists, create one.
-    return await guild.create_text_channel(channel_name, reason="Text Channel was requested but did not exist.")
-
-
-def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
-    """
-    This is a helper method used by event_loop.call_after()
-
-    NOTE: This method
-
-    NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
-    List modification would be a statement which is why we can't do this via a lambda.
-    :param member: The member to remove from voice room seeking
-    :return: None
-    """
-    global members_seeking_playmates
-    if member in members_seeking_playmates[activity]:
-        members_seeking_playmates[activity].remove(member)
-        if not members_seeking_playmates[activity]:
-            members_seeking_playmates.pop(activity)
 
 
 if __name__ == "__main__":
