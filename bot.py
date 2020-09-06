@@ -628,15 +628,18 @@ def init_admin_discord_id(id_fname: str) -> int:
     """
     if os.path.isfile("admin_dicord_id.txt"):
         with open("admin_dicord_id.txt", 'r') as f:
-            line = f.readline().strip()
-            if line and len(line) == 18:  # Discord IDs are 18 characters.
-                try:
-                    return int(line)
-                except ValueError as e:
-                    print(e)
-                    print("There was an issue with the discord ID found in " + id_fname
-                          + ". This file should only contain an 18-digit number and nothing else")
-
+            try:
+                line = f.readline().strip()
+                if line and len(line) == 18:  # Discord IDs are 18 characters.
+                    try:
+                        return int(line)
+                    except ValueError as e:
+                        print(e)
+                        print("There was an issue with the discord ID found in " + id_fname
+                              + ". This file should only contain an 18-digit number and nothing else")
+            except EOFError as e:
+                print(e)
+                print(id_fname + " is empty. This file must contain the user ID of the bot's admin")
     with open("admin_dicord_id.txt", "w") as f:
         id = input("Please enter the Discord ID number for the admin you want this bot to report to: ")
         f.write(id)
