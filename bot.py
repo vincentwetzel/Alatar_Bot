@@ -27,7 +27,8 @@ bot = commands.Bot(command_prefix='!', description=description)
 alertsOn = True
 messages_waiting_to_send = deque()
 member_names_to_ignore: List[str] = list()
-members_seeking_playmates: DefaultDict[str, list] = defaultdict(list)
+members_seeking_playmates: DefaultDict[str, List[discord.Member]] = defaultdict(list)
+"""{activity.name : List[discord.Member]}"""
 MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
 ADMIN_DISCORD_ID = None
 
@@ -100,7 +101,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
 
             # Figure out if the activity change should trigger the bot to take action regarding Voice Rooms
             global members_seeking_playmates
-            if after not in members_seeking_playmates[after.activity]:
+            if after not in members_seeking_playmates[after.activity.name]:
                 # initialize a list with one member in it
                 members_in_same_game = [after]
 
@@ -121,11 +122,11 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
 
                 event_loop = asyncio.get_event_loop()
                 event_loop.call_later(300.0, pop_member_from_voice_room_seek, after, after.activity)
-            for activity in list(members_seeking_playmates.keys()):
-                if after in list(members_seeking_playmates[activity]) and activity != after.activity:
-                    members_seeking_playmates[activity].remove(after)
-                    if not members_seeking_playmates[activity]:
-                        members_seeking_playmates.pop(activity)
+            for activity_name in list(members_seeking_playmates.keys()):
+                if after in list(members_seeking_playmates[activity_name]) and activity_name != after.activity.name:
+                    members_seeking_playmates[activity_name].remove(after)
+                    if not members_seeking_playmates[activity_name]:
+                        members_seeking_playmates.pop(activity_name)
 
     # Process nickname changes
     elif before.nick != after.nick:
@@ -478,7 +479,7 @@ async def printseeking(context: discord.ext.commands.Context) -> None:
     else:
         msg = await pad_message("Players Seeking Playmates", add_time_and_date=False) + "\n"
         for activity in list(members_seeking_playmates.keys()):
-            msg += "\nACTIVITY: " + activity.name + "\n"
+            msg += "\nACTIVITY: " + activity + "\n"
             for member in list(members_seeking_playmates[activity]):
                 msg = msg + member.name + "\n"
         msg = msg + "\n" + await pad_message("End", add_time_and_date=False) + "\n"
