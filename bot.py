@@ -120,7 +120,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
                 event_loop = asyncio.get_event_loop()
-                event_loop.call_later(5.0, pop_member_from_voice_room_seek, after, after.activity)
+                event_loop.call_later(300.0, pop_member_from_voice_room_seek, after, after.activity)
             for activity in list(members_seeking_playmates.keys()):
                 if after in list(members_seeking_playmates[activity]) and activity != after.activity:
                     members_seeking_playmates[activity].remove(after)
