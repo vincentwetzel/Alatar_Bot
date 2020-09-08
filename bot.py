@@ -105,9 +105,9 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                 members_in_same_game = [after]
 
                 # Make a list of other members in this same game
-                members_seeking_playmates[after.activity].append(after)
-                for member in list(members_seeking_playmates[after.activity]):
-                    if member != after and member.activity == after.activity and member.guild == after.guild:
+                members_seeking_playmates[after.activity.name].append(after)
+                for member in list(members_seeking_playmates[after.activity.name]):
+                    if member != after and member.activity.name == after.activity.name and member.guild == after.guild:
                         members_in_same_game.append(member)
 
                 # If there are more than 1 players in a game, try to get them all in the same room
@@ -649,10 +649,10 @@ def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Ac
     :return: None
     """
     global members_seeking_playmates
-    if member in members_seeking_playmates[activity]:
-        members_seeking_playmates[activity].remove(member)
-        if not members_seeking_playmates[activity]:
-            members_seeking_playmates.pop(activity)
+    if member in members_seeking_playmates[activity.name]:
+        members_seeking_playmates[activity.name].remove(member)
+        if not members_seeking_playmates[activity.name]:
+            members_seeking_playmates.pop(activity.name)
 
 
 def init_bot_token(token_file: str) -> str:
