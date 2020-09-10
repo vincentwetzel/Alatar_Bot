@@ -89,8 +89,9 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
 
     # Process status changes
     if before.status != after.status:
-        msg = (((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44, ' ')
-               + "\t(was " + str(before.status).upper() + ")")
+        msg = ((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
+                                                                                                 ' ') + "\t(was " + str(
+            before.status).upper() + ")"
 
     # Process activity changes
     elif before.activity != after.activity or before.activities != after.activities:
@@ -121,7 +122,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
                 event_loop = asyncio.get_event_loop()
-                event_loop.call_later(300.0, pop_member_from_voice_room_seek, after, after.activity)
+                event_loop.call_later(30.0, pop_member_from_voice_room_seek, after, after.activity)
             for activity_name in list(members_seeking_playmates.keys()):
                 if after in list(members_seeking_playmates[activity_name]) and activity_name != after.activity.name:
                     members_seeking_playmates[activity_name].remove(after)
