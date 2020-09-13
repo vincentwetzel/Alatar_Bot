@@ -616,7 +616,12 @@ async def insult(context, member_name: str) -> None:
     response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json")
     insult = json.loads(response.text)['insult']
 
-    member = discord.utils.get(context.guild.members, name=member_name)
+    if context.message.mentions:
+        member = context.message.mentions[0]
+    else:
+        member = discord.utils.get(context.guild.members, name=member_name)
+
+
     if member:
         await context.send(member.mention + " " + insult)
     else:
