@@ -62,7 +62,7 @@ async def on_ready():
 
     # Init Tweepy
     # complete authorization and initialize API endpoint
-    with open("../Discord_Bot/tweepy_tokens.ini", 'r') as f:
+    with open("tokens_tweepy.ini", 'r') as f:
         consumer_key = ""
         consumer_secret = ""
         access_token = ""
@@ -88,11 +88,14 @@ async def on_ready():
 
     # initialize streams
     # STREAM: #utpol
+    sleep(10)
+    await bot.get_channel(751661761140097036).send("Initializing Tweepy for #utpol")
     channel_utpol = await get_text_channel(bot.get_guild(429002252473204736), "utpol")
     streamListener_utpol = TweepyStreamListener(discord_message_method=channel_utpol.send,
                                                 async_loop=asyncio.get_event_loop(), skip_retweets=True)
     stream_utpol = tweepy.Stream(auth=tweepy_api.auth, listener=streamListener_utpol, tweet_mode='extended')
     stream_utpol.filter(track=["#utpol"], is_async=True)
+    await bot.get_channel(751661761140097036).send("Tweepy initialized for #utpol")
 
     xlsx = pandas.ExcelFile("Twitter_Accounts.xlsx")
     changed = False
@@ -103,11 +106,13 @@ async def on_ready():
         data_frames.append(df)
         for idx, row in df.iterrows():
             if pandas.isnull(row["Twitter_ID"]):
-                row["Twitter_ID"] = tweepy_api.get_user(screen_name=row["Account"]).id
+                row["Twitter_ID"] = str(tweepy_api.get_user(screen_name=row["Account"]).id)
                 changed = True
             elif type(row["Twitter_ID"]) == str and not row["Twitter_ID"].isdigit():
-                row["Twitter_ID"] = tweepy_api.get_user(screen_name=row["Account"]).id
+                row["Twitter_ID"] = str(tweepy_api.get_user(screen_name=row["Account"]).id)
                 changed = True
+            elif type(row["Twitter_ID"]) is not str:
+                row["Twitter_ID"] = str(row["Twitter_ID"])
             else:
                 pass
     if changed:
@@ -117,18 +122,20 @@ async def on_ready():
             writer.save()
 
     for df in data_frames:
-        for x in df["Twitter_ID"].to_list():
-            sleep(10)
-            await init_tweepy_stream(tweepy_api, [str(x)], df.name, True)
-        await log_msg_to_server_owner("Twitter initialization complete for: " + df.name)
+        await bot.get_channel(751661761140097036).send("Initializing Tweepy streams")
+        for idx, row in df.iterrows():
+            sleep(75)
+            await init_tweepy_stream(tweepy_api, str(row["Twitter_ID"]), df.name, True)
+            await bot.get_channel(751661761140097036).send("Twitter initialized for account: " + row["Account"])
+        await log_msg_to_server_owner("Tweepy initialization complete for: " + df.name)
 
 
-async def init_tweepy_stream(tweepy_api: tweepy.API, twitter_ids: List[str], message_channel_name: str,
+async def init_tweepy_stream(tweepy_api: tweepy.API, twitter_id: str, message_channel_name: str,
                              skip_retweets: bool) -> None:
     """
     Initializes a Tweepy stream.
     :param tweepy_api: The Tweepy API in use
-    :param twitter_ids: A list of Twitter IDs as strings
+    :param twitter_id: A Twitter ID str
     :param message_channel_name: The channel to message when any of these Users tweet.
     :param skip_retweets: Whether or not retweets/mentions should be documented.
     :return: None
@@ -138,7 +145,7 @@ async def init_tweepy_stream(tweepy_api: tweepy.API, twitter_ids: List[str], mes
     stream_listener = TweepyStreamListener(discord_message_method=message_channel.send,
                                            async_loop=asyncio.get_event_loop(), skip_retweets=skip_retweets)
     stream = tweepy.Stream(auth=tweepy_api.auth, listener=stream_listener, tweet_mode='extended')
-    stream.filter(follow=twitter_ids, is_async=True)
+    stream.filter(follow=[twitter_id], is_async=True)
 
 
 @bot.event
