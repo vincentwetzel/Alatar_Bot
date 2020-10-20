@@ -62,7 +62,7 @@ async def on_ready():
 
     # Init Tweepy
     # complete authorization and initialize API endpoint
-    with open("tokens_tweepy.ini", 'r') as f:
+    with open("tweepy_tokens.ini", 'r') as f:
         consumer_key = ""
         consumer_secret = ""
         access_token = ""
