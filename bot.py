@@ -4,7 +4,6 @@ import discord
 import requests
 import json
 import pandas
-import xlsxwriter
 
 from discord.ext import commands
 import asyncio
@@ -905,4 +904,4 @@ if __name__ == "__main__":
     except TypeError as e:
         print(e)
         print("This error means that there is something wrong with your admin_discord_id.txt file.")
-    bot.run(init_bot_token("token.txt"))
+    bot.run(init_bot_token("discord_token.txt"))
