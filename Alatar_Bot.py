@@ -35,6 +35,10 @@ MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
 ADMIN_DISCORD_ID = None
 """This is the main person the bot communicates with"""
 
+# Init bot
+description = '''This is Vincent's Bot for server management. Use the !command syntax to send a command to the bot.'''
+bot = commands.Bot(command_prefix='!', description=description)
+
 
 @bot.event
 async def on_ready():
@@ -709,8 +713,6 @@ def init_admin_discord_id(id_fname: str) -> int:
 
 
 if __name__ == "__main__":
-    description = '''This is Vincent's Bot for server management. Use the !command syntax to send a command to the bot.'''
-    bot = commands.Bot(command_prefix='!', description=description)
 
     try:
         ADMIN_DISCORD_ID = int(init_admin_discord_id("admin_discord_id.txt"))
