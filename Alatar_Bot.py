@@ -1,16 +1,15 @@
-from time import sleep
-
+# for Discord
 import discord
 from discord.ext import commands
 import asyncio
 
-import logging
-from datetime import datetime
-
-# For Insults API
+# or Insults API
 import requests
 import json
 
+# for general
+import logging
+from datetime import datetime
 import os.path
 from bisect import bisect  # Allows list insertion while maintaining order
 from typing import List, DefaultDict
@@ -22,23 +21,24 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-# Initialize Bot settings
-description = '''This is Vincent's Bot for server management. Use the !command syntax to send a command to the bot.'''
-bot = commands.Bot(command_prefix='!', description=description)
-
 # Globals
 alertsOn = True
+"""bool to toggle alerts"""
 messages_waiting_to_send = deque()
+"""Queues all messages waiting to send"""
 member_names_to_ignore: List[str] = list()
 members_seeking_playmates: DefaultDict[str, List[discord.Member]] = defaultdict(list)
 """{activity.name : List[discord.Member]}"""
+
 MEMBERS_TO_IGNORE_FILE = "members_to_ignore.txt"
+"""A file that keeps control of the members being ignored by the bot for status updates."""
 ADMIN_DISCORD_ID = None
+"""This is the main person the bot communicates with"""
 
 
 @bot.event
 async def on_ready():
-    msg = await pad_message("AlatarBot is now online!") + "\n"
+    msg = await pad_message("Alatar Bot is now online!") + "\n"
     await log_msg_to_server_owner(msg, False)
 
     global member_names_to_ignore
@@ -709,6 +709,9 @@ def init_admin_discord_id(id_fname: str) -> int:
 
 
 if __name__ == "__main__":
+    description = '''This is Vincent's Bot for server management. Use the !command syntax to send a command to the bot.'''
+    bot = commands.Bot(command_prefix='!', description=description)
+
     try:
         ADMIN_DISCORD_ID = int(init_admin_discord_id("admin_discord_id.txt"))
     except TypeError as e:
