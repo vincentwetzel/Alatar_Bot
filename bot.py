@@ -523,7 +523,6 @@ async def add_time_and_date_to_string(msg):
     return datetime.now().strftime("%m-%d-%y") + "\t" + datetime.now().strftime("%I:%M:%S%p") + "\t" + msg
 
 
-@bot.command(hidden=True)
 async def log_msg_to_server_owner(msg: str, add_time_and_date: bool = True, tts_param=False):
     """
     Sends a DM to the bot's owner.
