@@ -1,4 +1,6 @@
 # for Discord
+from threading import Timer
+
 import discord
 from discord.ext import commands
 import asyncio
@@ -266,13 +268,13 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
 
 
 @bot.command(hidden=True)
-async def on(context: discord.ext.commands.Context) -> None:
+async def on(ctx: discord.ext.commands.Context) -> None:
     """
     Turns logging on
-    :param context: The Context of the command
+    :param ctx: The Context of the command
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global alertsOn
@@ -290,13 +292,13 @@ async def on(context: discord.ext.commands.Context) -> None:
 
 
 @bot.command(hidden=True)
-async def off(context: discord.ext.commands.Context) -> None:
+async def off(ctx: discord.ext.commands.Context, seconds_delay: int = -1) -> None:
     """
     Turns logging OFF
-    :param context: The context of the command
+    :param ctx: The ctx of the command
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global alertsOn
@@ -304,18 +306,24 @@ async def off(context: discord.ext.commands.Context) -> None:
     await log_msg_to_server_owner("Notifications are OFF")
     alertsOn = False
 
+    if seconds_delay < 0:
+        pass
+    else:
+        await asyncio.sleep(seconds_delay)
+        await on(ctx)
+
 
 @bot.command(hidden=True)
-async def ignore(context: discord.ext.commands.Context, member_name_to_ignore: str) -> None:
+async def ignore(ctx: discord.ext.commands.Context, member_name_to_ignore: str) -> None:
     """
     Ignores a user from activity logging.
-    :param context: The context of the command.
+    :param ctx: The ctx of the command.
     :param member_name_to_ignore: The name of the Member to ignore.
     :return: None
     """
 
     # Only allow the admin to use this command
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     # Search to see if the member is already being ignored
@@ -351,18 +359,18 @@ async def ignore(context: discord.ext.commands.Context, member_name_to_ignore: s
 
     # Log the results
     await log_msg_to_server_owner(member_name_to_ignore + " has been ignored.")
-    await printignored(context)
+    await printignored(ctx)
 
 
 @bot.command(hidden=True)
-async def unignore(context: discord.ext.commands.Context, member_name_to_unignore: str) -> None:
+async def unignore(ctx: discord.ext.commands.Context, member_name_to_unignore: str) -> None:
     """
     Removes a Member from the ignore list
-    :param context: The context
+    :param ctx: The ctx
     :param member_name_to_unignore: The Member's name
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     # If they are not being ignored, disregard the command
@@ -377,17 +385,17 @@ async def unignore(context: discord.ext.commands.Context, member_name_to_unignor
         for user in member_names_to_ignore:
             f.write(user + '\n')
     await log_msg_to_server_owner(member_name_to_unignore + " is no longer being ignored.")
-    await printignored(context)
+    await printignored(ctx)
 
 
 @bot.command(hidden=True)
-async def unignoreall(context: discord.ext.commands.Context) -> None:
+async def unignoreall(ctx: discord.ext.commands.Context) -> None:
     """
     Removes all users from the ignore list.
-    :param context: The Context of the command.
+    :param ctx: The Context of the command.
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     global member_names_to_ignore
@@ -401,14 +409,14 @@ async def unignoreall(context: discord.ext.commands.Context) -> None:
 
 
 @bot.command()
-async def invite(context: discord.ext.commands.Context, member_to_invite: discord.Member) -> None:
+async def invite(ctx: discord.ext.commands.Context, member_to_invite: discord.Member) -> None:
     """
     !invite username - invites a user to your current voice room.
-    :param context: The current context
+    :param ctx: The current ctx
     :param member_to_invite: The user to invite to your current voice room.
     :return: None
     """
-    author: discord.Member = context.message.author
+    author: discord.Member = ctx.message.author
 
     # Check the VoiceState to see if the command's author is in a voice room
     if author.voice is None:
@@ -433,13 +441,13 @@ async def invite(context: discord.ext.commands.Context, member_to_invite: discor
 
 
 @bot.command(hidden=True)
-async def printignored(context) -> None:
+async def printignored(ctx: discord.ext.commands.Context) -> None:
     """
     Prints a list of the users currently being ignored
-    :param context: The context of the command
+    :param ctx: The ctx of the command
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     if not member_names_to_ignore:
@@ -453,14 +461,14 @@ async def printignored(context) -> None:
 
 
 @bot.command(hidden=True)
-async def printnotignored(context: discord.ext.commands.Context) -> None:
+async def printnotignored(ctx: discord.ext.commands.Context) -> None:
     """
     Prints a list of users not ignored by the bot.
-    :param context: The context of the command
+    :param ctx: The ctx of the command
     :return: None
     """
     # Only allow this command to be done by the admin
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         return
 
     msg: str = await pad_message("Users Not Ignored", add_time_and_date=False) + "\n"
@@ -479,13 +487,13 @@ async def printnotignored(context: discord.ext.commands.Context) -> None:
 
 
 @bot.command(hidden=True)
-async def printseeking(context: discord.ext.commands.Context) -> None:
+async def printseeking(ctx: discord.ext.commands.Context) -> None:
     """
     Prints a list of players who have recently started an activity (game) and are seeking friends.
-    :param context: The context.
+    :param ctx: The ctx.
     :return: None
     """
-    if context.message.author.id != ADMIN_DISCORD_ID:
+    if ctx.message.author.id != ADMIN_DISCORD_ID:
         await log_msg_to_server_owner("An unauthorized user attempted to use this command!")
         return
 
@@ -503,13 +511,13 @@ async def printseeking(context: discord.ext.commands.Context) -> None:
 
 
 @bot.command()
-async def time(context) -> None:
+async def time(ctx: discord.ext.commands.Context) -> None:
     """
     The bot replies with the current time and date.
-    :param context: The Context of the command.
+    :param ctx: The Context of the command.
     :return: None
     """
-    await context.send("Current time is: " + datetime.now().strftime(
+    await ctx.send("Current time is: " + datetime.now().strftime(
         "%I:%M:%S %p") + " on " + datetime.now().strftime("%A, %B %d, %Y"))
 
 
@@ -620,25 +628,25 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
 
 
 @bot.command()
-async def insult(context, member_name: str) -> None:
+async def insult(ctx: discord.ext.commands.Context, member_name: str) -> None:
     """
     !insult user - Hurls an insult at a targetted user.
-    :param context: The Context of the Command.
+    :param ctx: The Context of the Command.
     :param name: The name of the user to insult
     :return: None
     """
     response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json")
     insult = json.loads(response.text)['insult']
 
-    if context.message.mentions:
-        member = context.message.mentions[0]
+    if ctx.message.mentions:
+        member = ctx.message.mentions[0]
     else:
-        member = discord.utils.get(context.guild.members, name=member_name)
+        member = discord.utils.get(ctx.guild.members, name=member_name)
 
     if member:
-        await context.send(member.mention + " " + insult)
+        await ctx.send(member.mention + " " + insult)
     else:
-        await context.send("That is not a member of this guild. Choose a better target to insult!")
+        await ctx.send("That is not a member of this guild. Choose a better target to insult!")
 
 
 async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.TextChannel:
@@ -687,6 +695,7 @@ def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Ac
         members_seeking_playmates[activity.name].remove(member)
         if not members_seeking_playmates[activity.name]:
             members_seeking_playmates.pop(activity.name)
+    print("popped!")
 
 
 def init_bot_token(token_file: str) -> str:
