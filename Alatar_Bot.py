@@ -143,8 +143,12 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                     else:
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
-                event_loop = asyncio.get_event_loop()
-                event_loop.call_later(15.0, pop_member_from_voice_room_seek, after, after.activity)
+                # Sleep for an interval then remove this Member from members_seeking_playmates
+                await asyncio.sleep(15)
+                if member in members_seeking_playmates[after.activity.name]:
+                    members_seeking_playmates[after.activity.name].remove(member)
+                    if not members_seeking_playmates[after.activity.name]:
+                        members_seeking_playmates.pop(after.activity.name)
             for activity_name in list(members_seeking_playmates.keys()):
                 if after in list(members_seeking_playmates[activity_name]) and activity_name != after.activity.name:
                     members_seeking_playmates[activity_name].remove(after)
@@ -677,25 +681,6 @@ async def add_pleb_role(member: discord.Member) -> None:
                                                    reason="Pleb role for the plebs")
         await log_msg_to_server_owner("The Pleb role did not exist, so the bot has created it.")
     await member.add_roles(pleb_role)
-
-
-def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
-    """
-    This is a helper method used by event_loop.call_after()
-
-    NOTE: This method
-
-    NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
-    List modification would be a statement which is why we can't do this via a lambda.
-    :param member: The member to remove from voice room seeking
-    :return: None
-    """
-    global members_seeking_playmates
-    if member in members_seeking_playmates[activity.name]:
-        members_seeking_playmates[activity.name].remove(member)
-        if not members_seeking_playmates[activity.name]:
-            members_seeking_playmates.pop(activity.name)
-    print("popped!")
 
 
 def init_bot_token(token_file: str) -> str:
