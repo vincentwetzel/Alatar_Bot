@@ -45,9 +45,8 @@ async def on_ready():
     msg = await pad_message("Alatar Bot is now online!") + "\n"
     await log_msg_to_server_owner(msg, False)
 
-    global member_names_to_ignore
-
     # Initialize member_names_to_ignore
+    global member_names_to_ignore
     if os.path.exists(MEMBERS_TO_IGNORE_FILE):
         with open(MEMBERS_TO_IGNORE_FILE, 'r') as f:  # 'r' is reading mode, stream positioned at start of file
             for line in f:
@@ -57,6 +56,12 @@ async def on_ready():
         file = open(MEMBERS_TO_IGNORE_FILE,
                     "w+")  # "w+" opens for reading/writing (truncates), creates if doesn't exist
         file.close()
+
+    # Double check everyone's roles.
+    for guild in bot.guilds:
+        for member in guild.members:
+            if len(member.roles) == 1 and member.roles[0].name == "@everyone":
+                await add_pleb_role(member)
 
 
 @bot.event
@@ -96,16 +101,24 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
 
     # Process status changes
     if before.status != after.status:
-        msg = ((str(before.name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
-                                                                                                 ' ') + "\t(was " + str(
-            before.status).upper() + ")"
+        # Desktop change
+        if before.mobile_status is discord.enums.Status.offline and after.mobile_status is discord.enums.Status.offline:
+            msg = ((str(before.display_name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
+                                                                                                             ' ') + ", \twas " + str(
+                before.status).upper()
+        elif before.mobile_status is not after.mobile_status:
+            msg = ((str(before.display_name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
+                                                                                                             ' ') + " (MOBILE), \t was " + str(
+                before.status).upper() + " (MOBILE)."
+        else:
+            msg = "Something weird happened when " + before.display_name + " updated their status."
 
     # Process activity changes
     elif before.activity != after.activity or before.activities != after.activities:
         if after.activity is None:
-            msg = before.name + " STOPPED playing: \t" + before.activity.name
+            msg = before.display_name + " STOPPED playing: \t" + before.activity.name
         else:
-            msg = before.name + " STARTED playing: \t" + after.activity.name
+            msg = before.display_name + " STARTED playing: \t" + after.activity.name
 
             # Figure out if the activity change should trigger the bot to take action regarding Voice Rooms
             global members_seeking_playmates
@@ -129,7 +142,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
                 event_loop = asyncio.get_event_loop()
-                event_loop.call_later(30.0, pop_member_from_voice_room_seek, after, after.activity)
+                event_loop.call_later(15.0, pop_member_from_voice_room_seek, after, after.activity)
             for activity_name in list(members_seeking_playmates.keys()):
                 if after in list(members_seeking_playmates[activity_name]) and activity_name != after.activity.name:
                     members_seeking_playmates[activity_name].remove(after)
@@ -186,12 +199,7 @@ async def on_member_join(member: discord.Member) -> None:
     await log_msg_to_server_owner(msg)
     await log_user_activity_to_file(member.display_name, msg)
 
-    pleb_role: discord.Role = discord.utils.get(member.guild.roles, name="Plebs")
-    if pleb_role is None:
-        pleb_role = await member.guild.create_role(name="Plebs", hoist=True, mentionable=True,
-                                                   reason="Pleb role for the plebs")
-        await log_msg_to_server_owner("The Pleb role did not exist, so the bot has created it.")
-    await member.add_roles(pleb_role)
+    add_pleb_role(member)
 
 
 @bot.event
@@ -647,6 +655,20 @@ async def get_text_channel(guild: discord.Guild, channel_name: str) -> discord.T
 
     # If no Text Channel with this name exists, create one.
     return await guild.create_text_channel(channel_name, reason="Text Channel was requested but did not exist.")
+
+
+async def add_pleb_role(member: discord.Member) -> None:
+    """
+    Adds the pleb Role to a Member.
+    :param member: The Member to add the role to
+    :return: None
+    """
+    pleb_role: discord.Role = discord.utils.get(member.guild.roles, name="Plebs")
+    if pleb_role is None:
+        pleb_role = await member.guild.create_role(name="Plebs", hoist=True, mentionable=True,
+                                                   reason="Pleb role for the plebs")
+        await log_msg_to_server_owner("The Pleb role did not exist, so the bot has created it.")
+    await member.add_roles(pleb_role)
 
 
 def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
