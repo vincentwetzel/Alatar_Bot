@@ -112,8 +112,13 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
             msg = ((str(before.display_name) + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
                                                                                                              ' ') + " (MOBILE), \t was " + str(
                 before.status).upper() + " (MOBILE)."
+        elif before.web_status is not after.web_status:
+            msg = (str(before.display_name + " is now:").ljust(35, ' ') + str(after.status).upper()).ljust(44,
+                                                                                                           ' ') + " (WEB), \t was " + str(
+                before.status).upper() + " (WEB)."
         else:
             msg = "Something weird happened when " + before.display_name + " updated their status."
+
 
     # Process activity changes
     elif before.activity != after.activity or before.activities != after.activities:
