@@ -506,7 +506,6 @@ async def printseeking(ctx: discord.ext.commands.Context) -> None:
         await log_msg_to_server_owner("An unauthorized user attempted to use this command!")
         return
 
-    global members_seeking_playmates
     if not members_seeking_playmates:
         await log_msg_to_server_owner("No members are currently seeking friends to play with.")
     else:
