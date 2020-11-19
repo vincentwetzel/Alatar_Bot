@@ -149,7 +149,8 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
                 # Remove this Member from members_seeking_playmates after an interval
-                await pop_member_from_voice_room_seek(after, after.activity)
+                event_loop = asyncio.get_event_loop()
+                event_loop.call_later(15.0, pop_member_from_voice_room_seek, after, after.activity)
 
             # Clean up members_seeking_playmates in case this Member was already seeking playmates for another game
             for activity_name in list(members_seeking_playmates.keys()):
@@ -645,7 +646,6 @@ async def pop_member_from_voice_room_seek(member: discord.Member, activity: disc
     :param member: The member to remove from voice room seeking
     :return: None
     """
-    asyncio.sleep(15)
     global members_seeking_playmates
     if member in members_seeking_playmates[activity.name]:
         members_seeking_playmates[activity.name].remove(member.name)
