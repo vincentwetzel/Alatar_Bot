@@ -134,7 +134,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                 members_in_same_game = [after]
 
                 # Make a list of other members in this same game
-                members_seeking_playmates[after.activity.name].append(after)
+                members_seeking_playmates[after.activity.name].append(after.name)
                 for member in list(members_seeking_playmates[after.activity.name]):
                     if member != after and member.activity.name == after.activity.name and member.guild == after.guild:
                         members_in_same_game.append(member)
@@ -148,15 +148,15 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                     else:
                         await invite_members_to_voice_channel(members_in_same_game, "General")
 
-                # Sleep for an interval then remove this Member from members_seeking_playmates
-                await asyncio.sleep(15)
-                if member in members_seeking_playmates[after.activity.name]:
-                    members_seeking_playmates[after.activity.name].remove(member)
-                    if not members_seeking_playmates[after.activity.name]:
-                        members_seeking_playmates.pop(after.activity.name)
+                # Remove this Member from members_seeking_playmates after an interval
+                await pop_member_from_voice_room_seek(after, after.activity)
+
+            # Clean up members_seeking_playmates in case this Member was already seeking playmates for another game
             for activity_name in list(members_seeking_playmates.keys()):
                 if after in list(members_seeking_playmates[activity_name]) and activity_name != after.activity.name:
                     members_seeking_playmates[activity_name].remove(after)
+                    await log_msg_to_server_owner(
+                        "The bot cleaned up members_seeking_playmates for " + after.name + " who was previously seeking people to join them in another activity")
                     if not members_seeking_playmates[activity_name]:
                         members_seeking_playmates.pop(activity_name)
 
@@ -633,6 +633,24 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
             msg = member.display_name + " was MOVED to " + voice_channel.name
             await log_msg_to_server_owner(msg)
             await log_user_activity_to_file(member.display_name, msg)
+
+
+async def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
+    """
+    This is a helper method used by event_loop.call_after()
+
+    NOTE: In Python, lambdas can only execute (simple) expressions, not statements.
+    List modification would be a statement which is why we can't do this via a lambda.
+    :param activity: The Activity the Member is engaged in
+    :param member: The member to remove from voice room seeking
+    :return: None
+    """
+    asyncio.sleep(15)
+    global members_seeking_playmates
+    if member in members_seeking_playmates[activity.name]:
+        members_seeking_playmates[activity.name].remove(member.name)
+        if not members_seeking_playmates[activity.name]:
+            members_seeking_playmates.pop(activity.name)
 
 
 @bot.command()
