@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 import os.path
 from bisect import bisect  # Allows list insertion while maintaining order
-from typing import List, DefaultDict
+from typing import List, DefaultDict, Deque
 from collections import deque, defaultdict
 
 logger = logging.getLogger('discord')
@@ -26,7 +26,7 @@ logger.addHandler(handler)
 # Globals
 alertsOn = True
 """bool to toggle alerts"""
-messages_waiting_to_send = deque()
+messages_waiting_to_send: Deque[str] = deque()
 """Queues all messages waiting to send"""
 member_names_to_ignore: List[str] = list()
 members_seeking_playmates: DefaultDict[str, List[discord.Member]] = defaultdict(list)
@@ -39,7 +39,8 @@ ADMIN_DISCORD_ID = None
 
 # Init bot
 description = '''This is Vincent's Bot for server management. Use the !command syntax to send a command to the bot.'''
-bot = commands.Bot(command_prefix='!', description=description)
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='!', description=description, intents=intents)
 
 
 @bot.event
@@ -134,7 +135,7 @@ async def on_member_update(before: discord.Member, after: discord.Member) -> Non
                 members_in_same_game = [after]
 
                 # Make a list of other members in this same game
-                members_seeking_playmates[after.activity.name].append(after.name)
+                members_seeking_playmates[after.activity.name].append(after)
                 for member in list(members_seeking_playmates[after.activity.name]):
                     if member != after and member.activity.name == after.activity.name and member.guild == after.guild:
                         members_in_same_game.append(member)
@@ -504,7 +505,7 @@ async def printseeking(ctx: discord.ext.commands.Context) -> None:
     :return: None
     """
     if ctx.message.author.id != ADMIN_DISCORD_ID:
-        await log_msg_to_server_owner("An unauthorized user attempted to use this command!")
+        await log_msg_to_server_owner("An unauthorized user attempted to use !printseeking")
         return
 
     if not members_seeking_playmates:
@@ -648,7 +649,7 @@ async def pop_member_from_voice_room_seek(member: discord.Member, activity: disc
     """
     global members_seeking_playmates
     if member in members_seeking_playmates[activity.name]:
-        members_seeking_playmates[activity.name].remove(member.name)
+        members_seeking_playmates[activity.name].remove(member)
         if not members_seeking_playmates[activity.name]:
             members_seeking_playmates.pop(activity.name)
 
