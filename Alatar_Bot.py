@@ -637,7 +637,7 @@ async def invite_members_to_voice_channel(members_in_same_game: List[discord.Mem
             await log_user_activity_to_file(member.display_name, msg)
 
 
-async def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
+def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Activity) -> None:
     """
     This is a helper method used by event_loop.call_after()
 
@@ -647,12 +647,13 @@ async def pop_member_from_voice_room_seek(member: discord.Member, activity: disc
     :param member: The member to remove from voice room seeking
     :return: None
     """
+    print("Starting pop_member_from_voice_room_seek...")
     global members_seeking_playmates
     if member in members_seeking_playmates[activity.name]:
         members_seeking_playmates[activity.name].remove(member)
         if not members_seeking_playmates[activity.name]:
             members_seeking_playmates.pop(activity.name)
-
+    print("Done with pop_member_from_voice_room_seek")
 
 @bot.command()
 async def insult(ctx: discord.ext.commands.Context, member_name: str) -> None:
