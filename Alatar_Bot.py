@@ -17,6 +17,8 @@ from bisect import bisect  # Allows list insertion while maintaining order
 from typing import List, DefaultDict, Deque
 from collections import deque, defaultdict
 
+from discord.ext.commands import CommandNotFound
+
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -278,6 +280,13 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
     await log_msg_to_server_owner(msg)
 
 
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    raise error
+
+
 @bot.command(hidden=True)
 async def on(ctx: discord.ext.commands.Context) -> None:
     """
@@ -520,17 +529,6 @@ async def printseeking(ctx: discord.ext.commands.Context) -> None:
         await log_msg_to_server_owner(msg, False)
 
 
-@bot.command()
-async def time(ctx: discord.ext.commands.Context) -> None:
-    """
-    The bot replies with the current time and date.
-    :param ctx: The Context of the command.
-    :return: None
-    """
-    await ctx.send("Current time is: " + datetime.now().strftime(
-        "%I:%M:%S %p") + " on " + datetime.now().strftime("%A, %B %d, %Y"))
-
-
 async def pad_message(msg, add_time_and_date=True, dash_count=75) -> str:
     """
     Pads a message with stars
@@ -647,13 +645,12 @@ def pop_member_from_voice_room_seek(member: discord.Member, activity: discord.Ac
     :param member: The member to remove from voice room seeking
     :return: None
     """
-    print("Starting pop_member_from_voice_room_seek...")
     global members_seeking_playmates
     if member in members_seeking_playmates[activity.name]:
         members_seeking_playmates[activity.name].remove(member)
         if not members_seeking_playmates[activity.name]:
             members_seeking_playmates.pop(activity.name)
-    print("Done with pop_member_from_voice_room_seek")
+
 
 @bot.command()
 async def insult(ctx: discord.ext.commands.Context, member_name: str) -> None:
