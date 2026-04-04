@@ -182,6 +182,7 @@ def initialize_admin_discord_id(current_settings: dict[str, str | int | list[str
             return int(stored_admin_id)
         except ValueError:
             logger.error("Invalid admin ID format in settings.")
+            raise ValueError("Invalid admin ID format in settings.") from None
 
     # Only prompt if running interactively
     if sys.stdin.isatty():
@@ -440,7 +441,7 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
         elif new_activity:
             activity_log_message = f"{previous_state.display_name} STARTED playing: {new_activity.name}"
 
-            if new_activity.name not in bot_state.members_seeking_playmates.get(new_activity.name, []):
+            if current_state not in bot_state.members_seeking_playmates.get(new_activity.name, []):
                 bot_state.members_seeking_playmates.setdefault(new_activity.name, []).append(current_state)
 
                 members_with_matching_activity: list[discord.Member] = [
@@ -487,13 +488,13 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
     # -- Role change --
     elif previous_state.roles != current_state.roles:
         current_role_names: list[str] = [role.name for role in current_state.roles if role.name != MEMBER_ROLE_EVERYONE]
-        activity_log_message = f"{previous_state.name}'s roles are now: {', '.join(current_role_names) if current_role_names else 'None'}"
+        activity_log_message = f"{previous_state.display_name}'s roles are now: {', '.join(current_role_names) if current_role_names else 'None'}"
 
     else:
-        activity_log_message = f"ERROR! {current_state.name} triggered on_member_update with no detectable change."
+        activity_log_message = f"ERROR! {current_state.display_name} triggered on_member_update with no detectable change."
 
-    await log_member_activity_to_file(previous_state.name, activity_log_message)
-    if current_state.name not in bot_state.ignored_member_names:
+    await log_member_activity_to_file(previous_state.display_name, activity_log_message)
+    if current_state.display_name not in bot_state.ignored_member_names:
         await send_admin_notification(activity_log_message)
 
 
@@ -530,17 +531,15 @@ async def on_member_remove(departing_member: discord.Member) -> None:
 
 
 @BOT_CLIENT.event
-async def on_member_ban(ban_event: discord.Ban) -> None:
+async def on_member_ban(guild: discord.Guild, user: discord.User) -> None:
     """Log member bans."""
-    banned_guild: discord.Guild = ban_event.guild
-    banned_user: discord.abc.User = ban_event.user
-    banned_display_name: str = banned_user.display_name
+    banned_display_name: str = user.display_name
 
     ban_log_message = (
         f"Holy cats, **{banned_display_name}** just received the full wrath of the ban hammer! "
-        f"Bye bye nerd! Don't come back to {banned_guild.name}!"
+        f"Bye bye nerd! Don't come back to {guild.name}!"
     )
-    welcome_channel: discord.TextChannel = await get_or_create_text_channel(banned_guild, CHANNEL_NAME_WELCOME)
+    welcome_channel: discord.TextChannel = await get_or_create_text_channel(guild, CHANNEL_NAME_WELCOME)
     await welcome_channel.send(ban_log_message, tts=True)
     await send_admin_notification(ban_log_message)
     await log_member_activity_to_file(banned_display_name, ban_log_message)
@@ -743,7 +742,7 @@ async def print_tracked_members(command_context: commands.Context) -> None:
         guild_member.display_name
         for connected_guild in BOT_CLIENT.guilds
         for guild_member in connected_guild.members
-        if guild_member.name not in bot_state.ignored_member_names
+        if guild_member.display_name not in bot_state.ignored_member_names
     ]
     if not tracked_member_names:
         await command_context.send("No tracked members found.")
