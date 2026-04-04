@@ -1,6 +1,11 @@
 /admin_dicord_id.txt
-/members_to_ignore.txt
+/admin_discord_id.txt
 /discord_token.txt
+/settings.json
 /discord.log
 /logs/
 /tweepy_tokens.ini
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

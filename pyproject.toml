@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alatar-bot"
+version = "2.0.0"
+description = "A modern Discord bot for server management, activity monitoring, and automated voice channel organization."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Vincent"}
+]
+keywords = ["discord", "bot", "server-management", "discord-py"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "discord.py>=2.3.0",
+    "requests>=2.31.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/alatar-bot"
+Repository = "https://github.com/yourusername/alatar-bot"
+
+[project.scripts]
+alatar-bot = "Alatar_Bot:main"
+
+[tool.setuptools]
+py-modules = ["Alatar_Bot"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "ANN"]
+
+# E — pycodestyle errors (PEP 8)
+# F — pyflakes
+# W — pycodestyle warnings
+# I — isort (import sorting)
+# N — pep8-naming (PEP 8 naming conventions)
+# UP — pyupgrade (modern syntax)
+# B — flake8-bugbear
+# SIM — flake8-simplify
+# ANN — flake8-annotations (type hint enforcement)
