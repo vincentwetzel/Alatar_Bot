@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from bisect import bisect
 from collections import defaultdict, deque
 from datetime import UTC, datetime
@@ -135,18 +136,46 @@ def save_settings(settings_to_save: dict[str, str | int | list[str]], config_pat
 
 
 def initialize_bot_token(current_settings: dict[str, str | int | list[str]]) -> str:
-    """Return the bot token from settings or prompt the user."""
+    """Return the bot token from settings, env var, or prompt the user."""
     stored_token = current_settings.get("discord_token", "")
-    if not stored_token:
+
+    # Check environment variable first
+    env_token = os.environ.get("DISCORD_TOKEN") or os.environ.get("DISCORD_BOT_TOKEN")
+    if env_token:
+        logger.info("Using bot token from environment variable.")
+        current_settings["discord_token"] = env_token
+        save_settings(current_settings)
+        return env_token
+
+    if stored_token:
+        return stored_token
+
+    # Only prompt if running interactively
+    if sys.stdin.isatty():
         stored_token = input("Discord bot token not found in settings. Enter token: ")
         current_settings["discord_token"] = stored_token
         save_settings(current_settings)
-    return stored_token
+        return stored_token
+
+    raise ValueError(
+        "Bot token is not configured. "
+        "Set DISCORD_TOKEN environment variable, "
+        "add discord_token to settings.json, "
+        "or run the bot interactively to be prompted."
+    )
 
 
 def initialize_admin_discord_id(current_settings: dict[str, str | int | list[str]]) -> int:
-    """Return the admin Discord ID from settings or prompt the user."""
+    """Return the admin Discord ID from settings, env var, or prompt the user."""
     stored_admin_id = current_settings.get("admin_discord_id", "")
+
+    # Check environment variable first
+    env_admin_id = os.environ.get("ADMIN_DISCORD_ID")
+    if env_admin_id:
+        logger.info("Using admin ID from environment variable.")
+        current_settings["admin_discord_id"] = env_admin_id
+        save_settings(current_settings)
+        return int(env_admin_id)
 
     if stored_admin_id and len(str(stored_admin_id)) == 18:
         try:
@@ -154,10 +183,19 @@ def initialize_admin_discord_id(current_settings: dict[str, str | int | list[str
         except ValueError:
             logger.error("Invalid admin ID format in settings.")
 
-    admin_id_prompt: str = input("Enter the Discord ID of the admin the bot should report to: ")
-    current_settings["admin_discord_id"] = admin_id_prompt
-    save_settings(current_settings)
-    return int(admin_id_prompt)
+    # Only prompt if running interactively
+    if sys.stdin.isatty():
+        admin_id_prompt: str = input("Enter the Discord ID of the admin the bot should report to: ")
+        current_settings["admin_discord_id"] = admin_id_prompt
+        save_settings(current_settings)
+        return int(admin_id_prompt)
+
+    raise ValueError(
+        "Admin Discord ID is not configured. "
+        "Set ADMIN_DISCORD_ID environment variable, "
+        "add admin_discord_id to settings.json, "
+        "or run the bot interactively to be prompted."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -849,7 +887,12 @@ def main() -> None:
         logger.critical("Failed to initialize admin ID: %s", initialization_error)
         raise SystemExit(1)
 
-    bot_token: str = initialize_bot_token(bot_state.settings)
+    try:
+        bot_token: str = initialize_bot_token(bot_state.settings)
+    except (TypeError, ValueError) as token_error:
+        logger.critical("Failed to initialize bot token: %s", token_error)
+        raise SystemExit(1)
+
     BOT_CLIENT.run(bot_token)
 
 
