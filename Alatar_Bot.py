@@ -18,7 +18,6 @@ from bisect import bisect
 from collections import defaultdict, deque
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
-from typing import Deque
 
 import discord
 from discord import app_commands
@@ -88,7 +87,7 @@ class BotState:
     def __init__(self) -> None:
         self.admin_discord_id: int = 0
         self.notifications_enabled: bool = True
-        self.pending_notification_queue: Deque[str] = deque()
+        self.pending_notification_queue: deque[str] = deque()
         self.ignored_member_names: list[str] = []
         self.members_seeking_playmates: defaultdict[str, list[discord.Member]] = defaultdict(list)
         self.settings: dict[str, str | int | list[str]] = {}
@@ -148,7 +147,7 @@ def initialize_bot_token(current_settings: dict[str, str | int | list[str]]) -> 
         return env_token
 
     if stored_token:
-        return stored_token
+        return str(stored_token)
 
     # Only prompt if running interactively
     if sys.stdin.isatty():
@@ -179,7 +178,7 @@ def initialize_admin_discord_id(current_settings: dict[str, str | int | list[str
 
     if stored_admin_id and len(str(stored_admin_id)) == 18:
         try:
-            return int(stored_admin_id)
+            return int(str(stored_admin_id))
         except ValueError:
             logger.error("Invalid admin ID format in settings.")
             raise ValueError("Invalid admin ID format in settings.") from None
@@ -362,13 +361,16 @@ async def invite_members_to_voice_channel(
         await log_member_activity_to_file(target_member.display_name, log_action)
 
 
-def remove_member_from_playmate_seek(target_member: discord.Member, current_activity: discord.BaseActivity) -> None:
+def remove_member_from_playmate_seek(target_member: discord.Member, current_activity: discord.Activity) -> None:
     """Remove *target_member* from the playmate seek list (used by delayed task)."""
-    playmate_list = bot_state.members_seeking_playmates.get(current_activity.name)
+    activity_name = current_activity.name
+    if activity_name is None:
+        return
+    playmate_list = bot_state.members_seeking_playmates.get(activity_name)
     if playmate_list and target_member in playmate_list:
         playmate_list.remove(target_member)
         if not playmate_list:
-            bot_state.members_seeking_playmates.pop(current_activity.name, None)
+            bot_state.members_seeking_playmates.pop(activity_name, None)
 
 
 # ---------------------------------------------------------------------------
@@ -421,10 +423,13 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
     # -- Status change --
     if previous_state.status != current_state.status:
         device_suffix: str = ""
-        if previous_state.mobile_status != current_state.mobile_status:
-            device_suffix = " (MOBILE)"
-        elif previous_state.web_status != current_state.web_status:
-            device_suffix = " (WEB)"
+        previous_client_status = getattr(previous_state, "client_status", {})
+        current_client_status = getattr(current_state, "client_status", {})
+        if previous_client_status != current_client_status:
+            for device in ("mobile", "web", "desktop"):
+                if previous_client_status.get(device) != current_client_status.get(device):
+                    device_suffix = f" ({device.upper()})"
+                    break
 
         activity_log_message = (
             f"{previous_state.display_name} is now: {current_state.status.name.upper()}{device_suffix}, "
@@ -433,27 +438,35 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
 
     # -- Activity change --
     elif previous_state.activities != current_state.activities:
-        new_activity: discord.BaseActivity | None = current_state.activities[0] if current_state.activities else None
-        previous_activity: discord.BaseActivity | None = previous_state.activities[0] if previous_state.activities else None
+        new_activity: discord.Activity | None = None
+        previous_activity: discord.Activity | None = None
+
+        # Extract first activity if it's an Activity type (not Spotify/CustomActivity)
+        if current_state.activities and isinstance(current_state.activities[0], discord.Activity):
+            new_activity = current_state.activities[0]
+        if previous_state.activities and isinstance(previous_state.activities[0], discord.Activity):
+            previous_activity = previous_state.activities[0]
 
         if new_activity is None and previous_activity:
             activity_log_message = f"{previous_state.display_name} STOPPED playing: {previous_activity.name}"
-        elif new_activity:
+        elif new_activity and new_activity.name:
             activity_log_message = f"{previous_state.display_name} STARTED playing: {new_activity.name}"
+            activity_name = new_activity.name
 
-            if current_state not in bot_state.members_seeking_playmates.get(new_activity.name, []):
-                bot_state.members_seeking_playmates.setdefault(new_activity.name, []).append(current_state)
+            if current_state not in bot_state.members_seeking_playmates.get(activity_name, []):
+                bot_state.members_seeking_playmates.setdefault(activity_name, []).append(current_state)
 
                 members_with_matching_activity: list[discord.Member] = [
                     seeking_member
-                    for seeking_member in bot_state.members_seeking_playmates.get(new_activity.name, [])
+                    for seeking_member in bot_state.members_seeking_playmates.get(activity_name, [])
                     if seeking_member.activities
-                    and seeking_member.activities[0].name == new_activity.name
+                    and isinstance(seeking_member.activities[0], discord.Activity)
+                    and seeking_member.activities[0].name == activity_name
                     and seeking_member.guild == current_state.guild
                 ]
 
                 if len(members_with_matching_activity) > 1:
-                    target_voice_channel_name: str = GAME_VOICE_CHANNEL_MAPPING.get(new_activity.name, CHANNEL_NAME_GENERAL_VOICE)
+                    target_voice_channel_name: str = GAME_VOICE_CHANNEL_MAPPING.get(activity_name, CHANNEL_NAME_GENERAL_VOICE)
                     asyncio.create_task(
                         invite_members_to_voice_channel(members_with_matching_activity, target_voice_channel_name)
                     )
@@ -465,7 +478,7 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
 
             # Clean stale entries for other activities
             for stale_activity_name in list(bot_state.members_seeking_playmates.keys()):
-                if current_state in bot_state.members_seeking_playmates[stale_activity_name] and stale_activity_name != new_activity.name:
+                if current_state in bot_state.members_seeking_playmates[stale_activity_name] and stale_activity_name != activity_name:
                     bot_state.members_seeking_playmates[stale_activity_name].remove(current_state)
                     await send_admin_notification(
                         f"Cleaned up playmate list for {current_state.name} (was in '{stale_activity_name}')"
@@ -475,15 +488,9 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
         else:
             activity_log_message = f"{previous_state.display_name}'s activity changed (no activity)."
 
-    # -- Nickname change --
-    elif previous_state.nick != current_state.nick:
-        current_nickname: str = current_state.nick or current_state.name
-        previous_nickname: str = previous_state.nick or previous_state.name
-        activity_log_message = f"{previous_nickname}'s new nickname is: {current_nickname}"
-
-    # -- Global name change --
-    elif previous_state.global_name != current_state.global_name:
-        activity_log_message = f"{previous_state.name}'s new global name is: {current_state.global_name or current_state.name}"
+    # -- Display name change (nickname or global name) --
+    elif previous_state.display_name != current_state.display_name:
+        activity_log_message = f"{previous_state.display_name}'s display name changed to: {current_state.display_name}"
 
     # -- Role change --
     elif previous_state.roles != current_state.roles:
@@ -500,7 +507,7 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
 
 async def _delayed_playmate_cleanup(
     target_member: discord.Member,
-    target_activity: discord.BaseActivity,
+    target_activity: discord.Activity,
     delay_seconds: float,
 ) -> None:
     """Async wrapper for delayed playmate list cleanup."""
@@ -695,11 +702,17 @@ async def unignore_all_members(command_context: commands.Context) -> None:
 async def invite(command_context: commands.Context, invite_target: discord.Member) -> None:
     """Invite a user to your current voice channel."""
     command_author = command_context.author
+    if not isinstance(command_author, discord.Member):
+        await command_context.send("❌ This command can only be used in a server.")
+        return
     if command_author.voice is None or command_author.voice.channel is None:
         await command_context.send("❌ You must be in a voice channel to use this command.")
         return
 
-    author_voice_channel: discord.VoiceChannel = command_author.voice.channel
+    author_voice_channel = command_author.voice.channel
+    if author_voice_channel is None or not isinstance(author_voice_channel, discord.VoiceChannel):
+        await command_context.send("❌ You must be in a standard voice channel.")
+        return
     channel_invite_link: discord.Invite = await author_voice_channel.create_invite(
         reason=f"!invite used by {command_author.display_name}",
         max_age=VOICE_INVITE_MAX_AGE,
@@ -773,7 +786,7 @@ async def print_members_seeking(command_context: commands.Context) -> None:
 # -- Slash commands (application commands) --
 
 @BOT_CLIENT.tree.command(name="insult", description="Hurl a random insult at a user.")
-@commands.check(is_owner_interaction_check)
+@app_commands.check(is_owner_interaction_check)
 async def slash_command_insult(interaction: discord.Interaction, insult_target: discord.Member) -> None:
     """Send a random insult to a target user."""
     try:
@@ -801,7 +814,7 @@ def fetch_insult_from_api() -> str:
 
 @BOT_CLIENT.tree.command(name="serverinfo", description="Display information about the current server.")
 @app_commands.guild_only()
-@commands.check(is_owner_interaction_check)
+@app_commands.check(is_owner_interaction_check)
 async def slash_command_serverinfo(interaction: discord.Interaction) -> None:
     """Show server info."""
     target_guild = interaction.guild
