@@ -408,14 +408,6 @@ async def on_ready() -> None:
 
 
 @BOT_CLIENT.event
-async def on_message(received_message: discord.Message) -> None:
-    """Process incoming messages."""
-    if received_message.author == BOT_CLIENT.user:
-        return
-    await BOT_CLIENT.process_commands(received_message)
-
-
-@BOT_CLIENT.event
 async def on_member_update(previous_state: discord.Member, current_state: discord.Member) -> None:
     """Handle member status, activity, nickname, role changes."""
     activity_log_message: str = ""
@@ -593,21 +585,16 @@ async def on_guild_channel_delete(deleted_channel: discord.abc.GuildChannel) -> 
 # Permission checks
 # ---------------------------------------------------------------------------
 
-def is_owner_ctx_check(command_context: commands.Context) -> bool:
-    """Check if the command invoker is the bot owner (for prefix commands)."""
-    return command_context.author.id == bot_state.admin_discord_id
-
-
 def is_owner_interaction_check(interaction: discord.Interaction) -> bool:
     """Check if the interaction user is the bot owner (for slash commands)."""
     return interaction.user.id == bot_state.admin_discord_id
 
 
-# -- Admin-only text commands (kept as prefix for simplicity) --
+# -- Slash commands (application commands) --
 
-@BOT_CLIENT.command(name="on", hidden=True)
-@commands.check(is_owner_ctx_check)
-async def cmd_enable_notifications(command_context: commands.Context) -> None:
+@BOT_CLIENT.tree.command(name="on", description="Turn admin notifications ON.")
+@app_commands.check(is_owner_interaction_check)
+async def cmd_enable_notifications(interaction: discord.Interaction) -> None:
     """Turn admin notifications ON."""
     bot_state.notifications_enabled = True
     await send_admin_notification("Notifications are ON", include_timestamp=False)
@@ -625,31 +612,36 @@ async def cmd_enable_notifications(command_context: commands.Context) -> None:
             pad_log_message("End", include_timestamp=False), include_timestamp=False,
         )
 
-    await command_context.send("✅ Notifications are now **ON**.")
+    await interaction.response.send_message("✅ Notifications are now **ON**.", ephemeral=True)
 
 
-@BOT_CLIENT.command(name="off", hidden=True)
-@commands.check(is_owner_ctx_check)
-async def cmd_disable_notifications(command_context: commands.Context, seconds_delay: int = -1) -> None:
+@BOT_CLIENT.tree.command(name="off", description="Turn admin notifications OFF, optionally re-enable after delay.")
+@app_commands.describe(seconds_delay="Optional delay in seconds before turning back on")
+@app_commands.check(is_owner_interaction_check)
+async def cmd_disable_notifications(interaction: discord.Interaction, seconds_delay: int = -1) -> None:
     """Turn admin notifications OFF, optionally re-enable after *seconds_delay*."""
     bot_state.notifications_enabled = False
     await send_admin_notification("Notifications are OFF", include_timestamp=False)
 
-    await command_context.send("🔇 Notifications are now **OFF**.")
+    await interaction.response.send_message("🔇 Notifications are now **OFF**.", ephemeral=True)
 
     if seconds_delay >= 0:
         await asyncio.sleep(seconds_delay)
         bot_state.notifications_enabled = True
         await send_admin_notification("Notifications re-enabled after delay.", include_timestamp=False)
-        await command_context.send("✅ Notifications re-enabled.")
+        try:
+            await interaction.followup.send("✅ Notifications re-enabled.", ephemeral=True)
+        except discord.HTTPException:
+            pass
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def ignore_member(command_context: commands.Context, *, target_member_name: str) -> None:
+@BOT_CLIENT.tree.command(name="ignore", description="Add a user to the ignore list.")
+@app_commands.describe(target_member_name="The display name of the member to ignore")
+@app_commands.check(is_owner_interaction_check)
+async def ignore_member(interaction: discord.Interaction, target_member_name: str) -> None:
     """Add a user to the ignore list."""
     if target_member_name in bot_state.ignored_member_names:
-        await command_context.send(f"`{target_member_name}` is already being ignored.")
+        await interaction.response.send_message(f"`{target_member_name}` is already being ignored.", ephemeral=True)
         return
 
     # Validate member exists in any guild
@@ -659,7 +651,7 @@ async def ignore_member(command_context: commands.Context, *, target_member_name
         for guild_member in connected_guild.members
     )
     if not member_exists_in_guilds:
-        await command_context.send(f"Could not find a member named `{target_member_name}`.")
+        await interaction.response.send_message(f"Could not find a member named `{target_member_name}`.", ephemeral=True)
         return
 
     bot_state.ignored_member_names.insert(
@@ -668,53 +660,55 @@ async def ignore_member(command_context: commands.Context, *, target_member_name
     )
     bot_state.settings["ignored_members"] = bot_state.ignored_member_names
     save_settings(bot_state.settings)
-    await command_context.send(f"✅ `{target_member_name}` has been ignored.")
+    await interaction.response.send_message(f"✅ `{target_member_name}` has been ignored.", ephemeral=True)
     await send_admin_notification(f"{target_member_name} has been added to the ignore list.")
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def unignore_member(command_context: commands.Context, *, target_member_name: str) -> None:
+@BOT_CLIENT.tree.command(name="unignore", description="Remove a user from the ignore list.")
+@app_commands.describe(target_member_name="The display name of the member to unignore")
+@app_commands.check(is_owner_interaction_check)
+async def unignore_member(interaction: discord.Interaction, target_member_name: str) -> None:
     """Remove a user from the ignore list."""
     if target_member_name not in bot_state.ignored_member_names:
-        await command_context.send(f"`{target_member_name}` is not being ignored.")
+        await interaction.response.send_message(f"`{target_member_name}` is not being ignored.", ephemeral=True)
         return
 
     bot_state.ignored_member_names.remove(target_member_name)
     bot_state.settings["ignored_members"] = bot_state.ignored_member_names
     save_settings(bot_state.settings)
-    await command_context.send(f"✅ `{target_member_name}` is no longer being ignored.")
+    await interaction.response.send_message(f"✅ `{target_member_name}` is no longer being ignored.", ephemeral=True)
     await send_admin_notification(f"{target_member_name} has been removed from the ignore list.")
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def unignore_all_members(command_context: commands.Context) -> None:
+@BOT_CLIENT.tree.command(name="unignoreall", description="Clear the entire ignore list.")
+@app_commands.check(is_owner_interaction_check)
+async def unignore_all_members(interaction: discord.Interaction) -> None:
     """Clear the entire ignore list."""
     bot_state.ignored_member_names.clear()
     bot_state.settings["ignored_members"] = []
     save_settings(bot_state.settings)
-    await command_context.send("✅ Ignore list has been cleared.")
+    await interaction.response.send_message("✅ Ignore list has been cleared.", ephemeral=True)
     await send_admin_notification("Ignore list cleared.")
 
 
-@BOT_CLIENT.command()
-async def invite(command_context: commands.Context, invite_target: discord.Member) -> None:
+@BOT_CLIENT.tree.command(name="invite", description="Invite a user to your current voice channel.")
+@app_commands.describe(invite_target="The member to invite")
+async def invite(interaction: discord.Interaction, invite_target: discord.Member) -> None:
     """Invite a user to your current voice channel."""
-    command_author = command_context.author
+    command_author = interaction.user
     if not isinstance(command_author, discord.Member):
-        await command_context.send("❌ This command can only be used in a server.")
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
         return
     if command_author.voice is None or command_author.voice.channel is None:
-        await command_context.send("❌ You must be in a voice channel to use this command.")
+        await interaction.response.send_message("❌ You must be in a voice channel to use this command.", ephemeral=True)
         return
 
     author_voice_channel = command_author.voice.channel
     if author_voice_channel is None or not isinstance(author_voice_channel, discord.VoiceChannel):
-        await command_context.send("❌ You must be in a standard voice channel.")
+        await interaction.response.send_message("❌ You must be in a standard voice channel.", ephemeral=True)
         return
     channel_invite_link: discord.Invite = await author_voice_channel.create_invite(
-        reason=f"!invite used by {command_author.display_name}",
+        reason=f"/invite used by {command_author.display_name}",
         max_age=VOICE_INVITE_MAX_AGE,
     )
 
@@ -724,32 +718,32 @@ async def invite(command_context: commands.Context, invite_target: discord.Membe
             tts=True,
         )
     except discord.Forbidden:
-        await command_context.send(f"❌ Could not DM {invite_target.mention}. They may have DMs disabled.")
+        await interaction.response.send_message(f"❌ Could not DM {invite_target.mention}. They may have DMs disabled.", ephemeral=True)
         return
 
-    await command_context.send(f"✅ Invited **{invite_target.display_name}** to {author_voice_channel.name}.")
+    await interaction.response.send_message(f"✅ Invited **{invite_target.display_name}** to {author_voice_channel.name}.")
     await send_admin_notification(
         f"{command_author.display_name} invited {invite_target.display_name} to {author_voice_channel.name}"
     )
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def print_ignored_members(command_context: commands.Context) -> None:
+@BOT_CLIENT.tree.command(name="printignored", description="Show the current ignore list.")
+@app_commands.check(is_owner_interaction_check)
+async def print_ignored_members(interaction: discord.Interaction) -> None:
     """Show the current ignore list."""
     if not bot_state.ignored_member_names:
-        await command_context.send("No users are currently being ignored.")
+        await interaction.response.send_message("No users are currently being ignored.", ephemeral=True)
         return
 
     formatted_ignored_list: str = "\n".join(
         f"• {ignored_name}" for ignored_name in bot_state.ignored_member_names
     )
-    await command_context.send(f"**Ignored Members:**\n{formatted_ignored_list}")
+    await interaction.response.send_message(f"**Ignored Members:**\n{formatted_ignored_list}", ephemeral=True)
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def print_tracked_members(command_context: commands.Context) -> None:
+@BOT_CLIENT.tree.command(name="printnotignored", description="Show users not on the ignore list.")
+@app_commands.check(is_owner_interaction_check)
+async def print_tracked_members(interaction: discord.Interaction) -> None:
     """Show users not on the ignore list."""
     tracked_member_names: list[str] = [
         guild_member.display_name
@@ -758,21 +752,21 @@ async def print_tracked_members(command_context: commands.Context) -> None:
         if guild_member.display_name not in bot_state.ignored_member_names
     ]
     if not tracked_member_names:
-        await command_context.send("No tracked members found.")
+        await interaction.response.send_message("No tracked members found.", ephemeral=True)
         return
 
     formatted_tracked_list: str = "\n".join(
         f"• {tracked_name}" for tracked_name in tracked_member_names[:50]
     )  # cap output
-    await command_context.send(f"**Tracked Members:**\n{formatted_tracked_list}")
+    await interaction.response.send_message(f"**Tracked Members:**\n{formatted_tracked_list}", ephemeral=True)
 
 
-@BOT_CLIENT.command(hidden=True)
-@commands.check(is_owner_ctx_check)
-async def print_members_seeking(command_context: commands.Context) -> None:
+@BOT_CLIENT.tree.command(name="printseeking", description="Show members currently seeking playmates.")
+@app_commands.check(is_owner_interaction_check)
+async def print_members_seeking(interaction: discord.Interaction) -> None:
     """Show members currently seeking playmates."""
     if not bot_state.members_seeking_playmates:
-        await command_context.send("No members are currently seeking playmates.")
+        await interaction.response.send_message("No members are currently seeking playmates.", ephemeral=True)
         return
 
     formatted_seekers: list[str] = []
@@ -780,7 +774,7 @@ async def print_members_seeking(command_context: commands.Context) -> None:
         formatted_seekers.append(
             f"**{activity_name}**: {', '.join(seeker.display_name for seeker in seeking_members_list)}"
         )
-    await command_context.send("\n".join(formatted_seekers))
+    await interaction.response.send_message("\n".join(formatted_seekers), ephemeral=True)
 
 
 # -- Slash commands (application commands) --
@@ -839,24 +833,6 @@ async def slash_command_serverinfo(interaction: discord.Interaction) -> None:
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
-
-@BOT_CLIENT.event
-async def on_command_error(command_context: commands.Context, command_error: commands.CommandError) -> None:
-    """Handle command errors globally."""
-    if isinstance(command_error, commands.CommandNotFound):
-        return  # ignore unknown prefix commands
-
-    if isinstance(command_error, commands.CheckFailure):
-        await command_context.send("❌ You don't have permission to use this command.")
-        return
-
-    if isinstance(command_error, commands.MemberNotFound):
-        await command_context.send("❌ Could not find that member.")
-        return
-
-    logger.error("Error in command %s: %s", command_context.command, command_error, exc_info=command_error)
-    await command_context.send("❌ An error occurred while processing this command.")
-
 
 @BOT_CLIENT.tree.error
 async def on_slash_command_error(interaction: discord.Interaction, slash_command_error: app_commands.AppCommandError) -> None:

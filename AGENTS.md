@@ -47,7 +47,6 @@ async def get_channel(guild, name):
 - Use `discord.utils.get()` for lookups, **never** manual iteration.
 - Use `member.activities` (list), **not** `member.activity` (deprecated).
 - Slash commands use `@bot.tree.command()` with `Interaction`.
-- Prefix commands use `@bot.command()` with `Context`.
 - Handle `discord.Forbidden` and `discord.HTTPException` on all DM/send operations.
 
 ### 6. Error Handling

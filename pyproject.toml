@@ -33,6 +33,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/yourusername/alatar-bot"
 Repository = "https://github.com/yourusername/alatar-bot"
+Changelog = "https://github.com/yourusername/alatar-bot/blob/main/CHANGELOG.md"
 
 [project.scripts]
 alatar-bot = "Alatar_Bot:main"

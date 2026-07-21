@@ -1,71 +1,53 @@
 # Alatar Bot
 
-A Discord bot for server management, user activity monitoring, and automated voice channel organization.
+Alatar Bot is a Discord bot for server management, activity monitoring, and automated voice channel organization.
+It is built with `discord.py 2.x` and targets Python 3.10+.
 
-## 📋 Table of Contents
+## Features
 
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Bot Commands](#bot-commands)
-- [Project Structure](#project-structure)
-- [Logging](#logging)
-- [Dependencies](#dependencies)
-- [Trouleshooting](#troubleshooting)
-- [License](#license)
+- Slash commands for moderation and fun interactions
+- User activity tracking for presence, voice state, and channel events
+- Automated voice channel organization based on selected games or activities
+- Welcome and role automation for new members
+- Ignore list management for activity logging
+- DM notifications to the configured admin
+- Rotating log files for bot output and per-user activity history
 
-## ✨ Features
+## Requirements
 
-- **Slash Commands**: Modern Discord application commands (`/insult`, `/serverinfo`)
-- **User Activity Monitoring**: Tracks and logs member status changes, activities, and voice channel movements
-- **Automated Voice Channel Management**: Automatically invites or moves members to appropriate voice channels based on their current game/activity
-- **Role Management**: Automatically assigns roles to new members (e.g., "Plebs" role)
-- **Welcome System**: Welcomes new members and handles join/leave events
-- **Ignore System**: Allows administrators to ignore specific users from activity logging
-- **Insult Command**: Fetches random insults from an external API for fun interactions
-- **Admin Notifications**: Sends detailed logs and notifications to the server owner via DM
-- **Channel Management**: Monitors and logs channel creation/deletion events
-- **Log Rotation**: Automatic log file cycling to prevent disk space issues
+- Python 3.10 or newer
+- A Discord bot token
+- The Discord user ID of the admin account that should receive notifications
 
-## 📦 Prerequisites
+## Installation
 
-- Python 3.10 or higher
-- A Discord Bot Token
-- Administrator access to your Discord server
-
-## 🚀 Installation
-
-1. **Clone or download the repository**
-
-2. **Install required dependencies**
+1. Clone or download this repository.
+2. Install dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-   Or use the modern Python installer:
+   You can also install the project as a package:
 
    ```bash
    pip install .
    ```
 
-3. **Configure the bot** (see [Configuration](#configuration) section)
-
-4. **Run the bot**
+3. Run the bot:
 
    ```bash
    python Alatar_Bot.py
    ```
 
-## ⚙️ Configuration
+## Configuration
 
-The bot uses a centralized `settings.json` file for configuration. This file is automatically created on first run if it doesn't exist.
+Runtime configuration lives in `settings.json`.
 
-### Settings File Structure
+The file is created automatically on first run if it does not already exist.
 
-**`settings.json`**:
+### Settings
+
 ```json
 {
     "discord_token": "your-bot-token-here",
@@ -76,167 +58,86 @@ The bot uses a centralized `settings.json` file for configuration. This file is 
 }
 ```
 
-### Configuration Fields
+### Field Reference
 
-| Field | Description | Default | Required |
-|-------|-------------|---------|----------|
-| `discord_token` | Your Discord bot token from the Developer Portal | - | Yes |
-| `admin_discord_id` | Discord user ID of the bot administrator (18-digit number) | - | Yes |
-| `log_max_bytes` | Maximum size of discord.log before rotation (in bytes) | 5242880 (5 MB) | No |
-| `log_backup_count` | Number of rotated log files to keep | 5 | No |
-| `ignored_members` | List of usernames excluded from activity logging | `[]` | No |
+| Field | Description | Required |
+| --- | --- | --- |
+| `discord_token` | Discord bot token from the Developer Portal | Yes |
+| `admin_discord_id` | Discord user ID that receives admin notifications | Yes |
+| `log_max_bytes` | Maximum size of `discord.log` before rotation | No |
+| `log_backup_count` | Number of rotated log files to keep | No |
+| `ignored_members` | Member display names excluded from activity logging | No |
 
-### Getting Your Credentials
+### Environment Variables
 
-**Discord Bot Token:**
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create an application → Add Bot → Copy Token
+These optional environment variables override values in `settings.json`:
 
-**Admin Discord ID:**
-1. Enable Developer Mode in Discord settings
-2. Right-click your username → Copy ID
+- `DISCORD_TOKEN`
+- `DISCORD_BOT_TOKEN`
+- `ADMIN_DISCORD_ID`
 
-## 🎮 Usage
+## Usage
 
-### Starting the Bot
+On startup, the bot loads settings, syncs slash commands, and connects to Discord.
+If the bot is missing a token or admin ID, it prompts for them when run interactively.
 
-```bash
-python Alatar_Bot.py
+## Commands
+
+### Slash Commands
+
+| Command | Description |
+| --- | --- |
+| `/ignore <target_member_name>` | Add a member display name to the ignore list |
+| `/unignore <target_member_name>` | Remove a member display name from the ignore list |
+| `/unignoreall` | Clear the ignore list |
+| `/invite <invite_target>` | Invite a user to your current voice channel |
+| `/printignored` | Show the current ignore list |
+| `/printnotignored` | Show members not on the ignore list |
+| `/printseeking` | Show members currently seeking playmates |
+| `/insult <insult_target>` | Send a random insult to a user |
+| `/serverinfo` | Display information about the current server |
+
+### Prefix Commands
+
+The bot still uses `!` as its command prefix for legacy command handling and error routing, but the primary user-facing commands are slash commands.
+
+## Logging
+
+- `discord.log` stores bot-level logs and rotates automatically.
+- `logs/<display-name>.txt` stores per-member activity history.
+
+## Project Structure
+
+```text
+Alatar_Bot.py      Main bot source
+pyproject.toml     Packaging and tooling configuration
+requirements.txt   Dependency list
+settings.json      Runtime configuration
+README.md          Project overview and setup
+CHANGELOG.md       Version history
+CONTRIBUTING.md    Contribution guide
+AGENTS.md          Agent-specific coding instructions
+discord.log        Rotating bot log
+logs/              Per-user activity logs
 ```
 
-On first run, the bot will prompt you for:
-- Discord Bot Token (if not set in `settings.json`)
-- Admin Discord ID (if not set in `settings.json`)
+## Dependencies
 
-### Bot Behavior
+- `discord.py>=2.3.0`
+- `requests>=2.31.0`
 
-Once running, the bot will:
-1. Monitor all member activity in connected servers
-2. Automatically organize voice channels based on games being played
-3. Log all activity to the `logs/` directory (one file per user)
-4. Send notifications to the admin via DM
-5. Assign the "Plebs" role to new members automatically
+## Troubleshooting
 
-## 🤖 Bot Commands
+- If slash commands do not appear, make sure the bot has been invited with the correct scopes and has permission to read the guild.
+- If the bot cannot DM the admin, confirm the admin account accepts direct messages from the server.
+- If voice organization is not working, verify the bot has `Manage Channels` and `Move Members` permissions.
+- If the bot asks for configuration repeatedly, confirm `settings.json` is writable and contains valid JSON.
 
-### Slash Commands (Application Commands)
-
-Modern Discord commands accessible via the `/` menu.
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/insult <user>` | Sends a random insult to a target user | `/insult @JohnDoe` |
-| `/serverinfo` | Displays server information | `/serverinfo` |
-
-### Legacy Prefix Commands (Admin)
-
-These commands use the `!` prefix and are restricted to the bot owner.
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `!on` | Turn on admin notifications | `!on` |
-| `!off [seconds]` | Turn off admin notifications (optional delay) | `!off` or `!off 300` |
-| `!ignore <username>` | Add a user to the ignore list | `!ignore SpamUser` |
-| `!unignore <username>` | Remove a user from the ignore list | `!unignore SpamUser` |
-| `!unignoreall` | Clear the entire ignore list | `!unignoreall` |
-| `!printignored` | Display currently ignored users | `!printignored` |
-| `!printnotignored` | Display users not being ignored | `!printnotignored` |
-| `!printseeking` | Show members seeking playmates | `!printseeking` |
-| `!invite <@user>` | Invites a user to your current voice channel | `!invite @Friend` |
-
-## 📁 Project Structure
-
-```
-Alatar_Bot.py        # Main bot script
-pyproject.toml       # Modern Python project configuration
-requirements.txt     # Python dependencies
-settings.json        # Centralized bot config (git-ignored)
-.gitignore           # Git ignore rules
-README.md            # This file
-CHANGELOG.md         # Version history
-CONTRIBUTING.md      # Contribution guidelines
-AGENTS.md            # Agent/LLM coding guidelines
-discord.log          # Rotating bot log (git-ignored)
-logs/
-    └── {username}.txt  # Per-user activity logs (git-ignored)
-```
-
-## 📝 Logging
-
-The bot implements comprehensive logging:
-
-### Log Files
-
-- **`discord.log`**: General bot logs (created automatically)
-- **`logs/{username}.txt`**: Individual user activity logs (one file per user)
-
-### Log Information
-
-Each log entry includes:
-- Date (MM-DD-YY format)
-- Time (12-hour format with AM/PM)
-- Activity description
-
-### Notification Suppression
-
-Use `!off` to temporarily suppress DM notifications. Notifications will be queued and sent when you use `!on`.
-
-## 📦 Dependencies
-
-- **discord.py** - Discord API wrapper
-- **requests** - HTTP library for API calls
-- Standard library modules:
-  - `asyncio` - Asynchronous I/O
-  - `logging` - Logging framework
-  - `json` - JSON processing
-  - `os` - Operating system interface
-  - `datetime` - Date/time handling
-  - `typing` - Type hints
-  - `collections` - Data structures
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**Bot doesn't respond to commands:**
-- Ensure the bot has proper permissions in your Discord server
-- Check that you're using the correct command prefix (`!`)
-- Verify the bot is online and connected
-
-**Token or Admin ID errors:**
-- Check `settings.json` for proper formatting
-- Ensure `discord_token` contains a valid token
-- Ensure `admin_discord_id` contains only an 18-digit number
-- Regenerate token from Discord Developer Portal if needed
-
-**Voice channel features not working:**
-- Ensure bot has "Manage Channels" and "Move Members" permissions
-- Check that members have activities/games enabled in their status
-
-**File not found errors:**
-- The bot will create missing settings files automatically
-- Check file permissions if running on restricted systems
-
-## 📄 License
+## License
 
 This project is provided as-is for personal Discord server management use.
 
-## 📏 Code Standards
+## Acknowledgments
 
-This project enforces strict code quality standards:
-
-- **PEP 8** — Style guide compliance (naming, formatting, line length ≤ 120)
-- **PEP 257** — Docstring conventions (triple-quoted, descriptive)
-- **PEP 484** — **Type hints are mandatory** on all functions and variables
-- **Python 3.10+** syntax — modern type hints (`list[str]` not `List[str]`)
-
-All contributions must adhere to these standards. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for details.
-
-## 👤 Author
-
-Created by Vincent
-
-## 🙏 Acknowledgments
-
-- [Evil Insult API](https://evilinsult.com/) for the insult command
-- Discord.py community for documentation and examples
+- Evil Insult API for the insult command
+- The Discord.py community for documentation and examples
