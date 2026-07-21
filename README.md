@@ -40,6 +40,44 @@ It is built with `discord.py 2.x` and targets Python 3.10+.
    python Alatar_Bot.py
    ```
 
+## Inviting the Bot
+
+To invite Alatar Bot to your Discord server, you will need to generate an invite link from the Discord Developer Portal.
+
+1.  **Get your Bot's Client ID**:
+    *   Go to the Discord Developer Portal.
+    *   Select your bot application.
+    *   Navigate to "OAuth2" -> "General". Your "Client ID" will be listed there.
+
+2.  **Generate the Invite Link**:
+    *   Navigate to "OAuth2" -> "URL Generator".
+    *   Under "SCOPES", select `bot` and `applications.commands`.
+    *   Under "BOT PERMISSIONS", select the following recommended permissions:
+        *   **General Permissions**:
+            *   `View Channels`
+            *   `Send Messages`
+            *   `Embed Links`
+            *   `Read Message History`
+            *   `Use Application Commands`
+        *   **Membership Permissions**:
+            *   `Manage Roles`
+            *   `Kick Members`
+            *   `Ban Members`
+        *   **Voice Channel Permissions**:
+            *   `Connect`
+            *   `Speak`
+            *   `Move Members`
+            *   `Manage Channels`
+    *   Copy the generated URL from the "GENERATED URL" box.
+
+3.  **Invite to your Server**:
+    *   Paste the copied URL into your browser.
+    *   Select the server you wish to invite the bot to and authorize it.
+
+   ```bash
+   python Alatar_Bot.py
+   ```
+
 ## Configuration
 
 Runtime configuration lives in `settings.json`.
