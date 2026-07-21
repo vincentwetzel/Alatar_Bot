@@ -416,18 +416,18 @@ async def on_ready() -> None:
 
 
 @BOT_CLIENT.event
-async def on_member_update(previous_state: discord.Member, current_state: discord.Member) -> None:
-    """Handle member status, activity, nickname, role changes."""
+async def on_presence_update(previous_state: discord.Member, current_state: discord.Member) -> None:
+    """Handle member status and activity changes."""
     activity_log_message: str = ""
 
     # -- Status change --
     if previous_state.status != current_state.status:
         device_suffix: str = ""
-        previous_client_status = getattr(previous_state, "client_status", {})
-        current_client_status = getattr(current_state, "client_status", {})
+        previous_client_status = previous_state.client_status
+        current_client_status = current_state.client_status
         if previous_client_status != current_client_status:
             for device in ("mobile", "web", "desktop"):
-                if previous_client_status.get(device) != current_client_status.get(device):
+                if getattr(previous_client_status, device) != getattr(current_client_status, device):
                     device_suffix = f" ({device.upper()})"
                     break
 
@@ -488,8 +488,21 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
         else:
             activity_log_message = f"{previous_state.display_name}'s activity changed (no activity)."
 
+    if not activity_log_message:
+        return
+
+    await log_member_activity_to_file(previous_state.display_name, activity_log_message)
+    if current_state.display_name not in bot_state.ignored_member_names:
+        await send_admin_notification(activity_log_message)
+
+
+@BOT_CLIENT.event
+async def on_member_update(previous_state: discord.Member, current_state: discord.Member) -> None:
+    """Handle member nickname and role changes."""
+    activity_log_message: str = ""
+
     # -- Display name change (nickname or global name) --
-    elif previous_state.display_name != current_state.display_name:
+    if previous_state.display_name != current_state.display_name:
         activity_log_message = f"{previous_state.display_name}'s display name changed to: {current_state.display_name}"
 
     # -- Role change --
@@ -497,8 +510,8 @@ async def on_member_update(previous_state: discord.Member, current_state: discor
         current_role_names: list[str] = [role.name for role in current_state.roles if role.name != MEMBER_ROLE_EVERYONE]
         activity_log_message = f"{previous_state.display_name}'s roles are now: {', '.join(current_role_names) if current_role_names else 'None'}"
 
-    else:
-        activity_log_message = f"ERROR! {current_state.display_name} triggered on_member_update with no detectable change."
+    if not activity_log_message:
+        return
 
     await log_member_activity_to_file(previous_state.display_name, activity_log_message)
     if current_state.display_name not in bot_state.ignored_member_names:
