@@ -1,11 +1,14 @@
-/admin_dicord_id.txt
-/admin_discord_id.txt
-/discord_token.txt
-/settings.json
-/discord.log
-/logs/
-/tweepy_tokens.ini
+# Python
 __pycache__/
 *.pyc
 *.pyo
-.pytest_cache/
+*.pyd
+
+# IDE-specific files (e.g., IntelliJ IDEA)
+.idea/
+.idea/workspace.xml
+
+# Bot-specific generated files
+settings.json
+discord.log
+logs/

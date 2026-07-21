@@ -905,7 +905,7 @@ def main() -> None:
         logger.critical("Failed to initialize bot token: %s", token_error)
         raise SystemExit(1)
 
-    BOT_CLIENT.run(bot_token)
+    BOT_CLIENT.run(bot_token, log_handler=None)
 
 
 if __name__ == "__main__":
