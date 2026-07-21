@@ -7,8 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 
 - Reworked the README to match the current command set, configuration flow, and runtime behavior.
-- Updated the contributing guide with current coding and testing expectations.
-- Cleaned up the changelog so future entries can track changes in a consistent format.
+- Updated the contributing guide with current coding, state management, and testing expectations.
+- Aligned the project metadata version with the latest documented release.
 
 ## [2.1.0] - 2025
 
@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - Tightened type annotations across settings loading and runtime state.
 - Added a dedicated constants section and shared UTC helper.
 - Removed unused typing imports and redundant guard logic.
+- Added notification queueing behavior for admin DMs while notifications are disabled.
+- Added slash commands for notification toggling and expanded user-facing command coverage.
 
 ## [2.0.0] - 2024
 

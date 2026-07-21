@@ -2,7 +2,8 @@
 
 ## Project Overview
 
-Alatar Bot is a Discord bot built with **discord.py 2.x** for server management, activity monitoring, and automated voice channel organization. It runs on **Python 3.10+**.
+Alatar Bot is a Discord bot built with **discord.py 2.x** for server management, activity monitoring, and automated
+voice channel organization. It runs on **Python 3.10+**.
 
 ## Core Rules
 
@@ -10,13 +11,13 @@ Alatar Bot is a Discord bot built with **discord.py 2.x** for server management,
 
 All code **MUST** adhere to PEP standards:
 
-- **PEP 8** — Style guide (naming, spacing, line length ≤ 120 chars)
-- **PEP 257** — Docstring conventions (triple-quoted, imperative mood)
-- **PEP 484** — Type hints on **all** function signatures and non-trivial variables
-- **PEP 517/518** — Build system configuration via `pyproject.toml`
-- **PEP 621** — Project metadata in `pyproject.toml`
+- **PEP 8** - Style guide (naming, spacing, line length <= 120 chars)
+- **PEP 257** - Docstring conventions (triple-quoted, imperative mood)
+- **PEP 484** - Type hints on **all** function signatures and non-trivial variables
+- **PEP 517/518** - Build system configuration via `pyproject.toml`
+- **PEP 621** - Project metadata in `pyproject.toml`
 
-### 2. Type Hints — Mandatory
+### 2. Type Hints - Mandatory
 
 - **Every** function, method, and variable must have explicit type hints.
 - Use Python 3.10+ built-in generics (`list[str]`, `dict[str, int]`).
@@ -24,11 +25,11 @@ All code **MUST** adhere to PEP standards:
 - Return types must be explicit, including `None`.
 
 ```python
-# ✅ Correct
+# Correct
 async def get_channel(guild: discord.Guild, name: str) -> discord.TextChannel | None:
     ...
 
-# ❌ Incorrect — missing type hints
+# Incorrect - missing type hints
 async def get_channel(guild, name):
     ...
 ```
@@ -53,20 +54,20 @@ async def get_channel(guild, name):
 
 - Use explicit `try/except` with specific exception types.
 - Log errors with `logger.error/warning/info`.
-- Never `raise error` silently — handle or log.
+- Never `raise error` silently - handle or log.
 
 ### 7. Settings
 
-- **All** configuration lives in `settings.json` — no standalone config files.
+- **All** configuration lives in `settings.json` - no standalone config files.
 - Use the `bot_state` instance (populated at startup via `load_settings()`).
 - Persist changes with `save_settings(bot_state.settings)`.
 - Never hardcode tokens, IDs, or paths.
 
 ### 8. Global State Management
 
-- **Use `BotState` class** — All mutable state lives in `bot_state` instance.
+- **Use `BotState` class** - All mutable state lives in `bot_state` instance.
 - Access via `bot_state.admin_discord_id`, `bot_state.notifications_enabled`, etc.
-- Avoid bare `global` declarations — use `bot_state` instead.
+- Avoid bare `global` declarations - use `bot_state` instead.
 
 ### 9. Constants
 
@@ -81,7 +82,7 @@ async def get_channel(guild, name):
 
 ## File Structure
 
-```
+```text
 Alatar_Bot.py        # Main bot source (single-file architecture)
 pyproject.toml       # Build config and tool settings
 requirements.txt     # Pip dependencies
@@ -98,6 +99,7 @@ discord.log          # Rotating bot log (git-ignored)
 ## Testing Before Completion
 
 Before marking a task as done:
-1. Run `python -m py_compile Alatar_Bot.py` — **must pass**
+
+1. Run `python -m py_compile Alatar_Bot.py` - **must pass**
 2. Verify no IDE warnings/errors remain
 3. Confirm type hints are present and correct

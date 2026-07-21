@@ -5,13 +5,14 @@ It is built with `discord.py 2.x` and targets Python 3.10+.
 
 ## Features
 
-- Slash commands for moderation and fun interactions
+- Slash commands for admin-only moderation and utility actions
 - User activity tracking for presence, voice state, and channel events
 - Automated voice channel organization based on selected games or activities
-- Welcome and role automation for new members
+- Welcome messages and automatic "Plebs" role assignment for new members
 - Ignore list management for activity logging
-- DM notifications to the configured admin
+- DM notifications to the configured admin, with queueing when notifications are disabled
 - Rotating log files for bot output and per-user activity history
+- Slash commands for invites, server info, and random insults
 
 ## Requirements
 
@@ -74,10 +75,6 @@ To invite Alatar Bot to your Discord server, you will need to generate an invite
     *   Paste the copied URL into your browser.
     *   Select the server you wish to invite the bot to and authorize it.
 
-   ```bash
-   python Alatar_Bot.py
-   ```
-
 ## Configuration
 
 Runtime configuration lives in `settings.json`.
@@ -118,6 +115,7 @@ These optional environment variables override values in `settings.json`:
 
 On startup, the bot loads settings, syncs slash commands, and connects to Discord.
 If the bot is missing a token or admin ID, it prompts for them when run interactively.
+When `notifications_enabled` is turned off through `/off`, messages to the admin are queued until `/on` re-enables delivery.
 
 ## Commands
 
@@ -125,6 +123,8 @@ If the bot is missing a token or admin ID, it prompts for them when run interact
 
 | Command | Description |
 | --- | --- |
+| `/on` | Turn admin notifications on and flush queued notifications |
+| `/off [seconds_delay]` | Turn admin notifications off, optionally re-enabling after a delay |
 | `/ignore <target_member_name>` | Add a member display name to the ignore list |
 | `/unignore <target_member_name>` | Remove a member display name from the ignore list |
 | `/unignoreall` | Clear the ignore list |
@@ -170,6 +170,7 @@ logs/              Per-user activity logs
 - If the bot cannot DM the admin, confirm the admin account accepts direct messages from the server.
 - If voice organization is not working, verify the bot has `Manage Channels` and `Move Members` permissions.
 - If the bot asks for configuration repeatedly, confirm `settings.json` is writable and contains valid JSON.
+- If `/off <seconds_delay>` is used with a delay, the bot will schedule re-enabling notifications in the background.
 
 ## License
 

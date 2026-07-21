@@ -24,6 +24,8 @@ Thanks for helping improve Alatar Bot.
 - Use `asyncio.to_thread()` for blocking I/O.
 - Use `discord.utils.get()` for lookups instead of manual iteration.
 - Follow discord.py 2.x patterns, especially slash commands and `Interaction`.
+- Keep all mutable runtime state on `bot_state` instead of module-level globals.
+- Store configuration in `settings.json` and persist updates with `save_settings(bot_state.settings)`.
 
 ## Adding Commands
 
@@ -37,6 +39,7 @@ When adding or changing commands:
 6. Log important actions with `logger.info`, `logger.warning`, or `logger.error`.
 7. Use `interaction.response.send_message()` for slash command responses.
 8. Use `ephemeral=True` for admin-only responses.
+9. Update the README command table if the user-facing surface changes.
 
 ## Testing
 
@@ -52,6 +55,7 @@ Also verify:
 - Slash commands sync successfully.
 - Type hints remain complete and accurate.
 - Logging still works as expected.
+- Settings changes round-trip through `settings.json`.
 
 If `ruff` is available, run it as well.
 

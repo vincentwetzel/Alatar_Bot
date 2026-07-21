@@ -1,4 +1,23 @@
-# Runtime dependencies for Alatar Bot.
+# Dependencies
 
+Python packages required for Alatar Bot.
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Packages
+
+```
 discord.py>=2.3.0
 requests>=2.31.0
+```
+
+## Notes
+
+- **discord.py**: Main Discord API wrapper (requires Python 3.8+)
+- **requests**: Used for the insult API calls
+
+All other modules used are part of Python's standard library and don't need to be installed separately.

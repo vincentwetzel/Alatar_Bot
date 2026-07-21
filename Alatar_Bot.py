@@ -276,6 +276,14 @@ async def get_or_create_text_channel(
 
 async def assign_pleb_role(target_member: discord.Member) -> None:
     """Assign the 'Plebs' role to *target_member*, creating it if necessary."""
+    if target_member.bot:
+        logger.info("Skipping Pleb role assignment for bot: %s", target_member.display_name)
+        return
+
+    if target_member == target_member.guild.owner:
+        logger.info("Skipping Pleb role assignment for guild owner: %s", target_member.display_name)
+        return
+
     pleb_role = discord.utils.get(target_member.guild.roles, name=PLEB_ROLE_NAME)
     if pleb_role is None:
         pleb_role = await target_member.guild.create_role(
